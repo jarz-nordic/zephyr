@@ -24,11 +24,16 @@
 #include <gatt/bas.h>
 
 s16_t temp_in = 0xBABA;
+u16_t humidity_in = 0xBACA;
 s16_t temp_out;
 
 static ssize_t read_temperature(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
 				void *buf, u16_t len, u16_t offset);
+
+static ssize_t read_humidity(struct bt_conn *conn,
+			     const struct bt_gatt_attr *attr,
+			     void *buf, u16_t len, u16_t offset);
 
 static ssize_t write_temperature(struct bt_conn *conn,
 				 const struct bt_gatt_attr *attr,
@@ -43,14 +48,21 @@ static struct bt_gatt_attr logger_attrs[] = {
 			       BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
 			       BT_GATT_PERM_READ,
 			       read_temperature, NULL, NULL),
-	BT_GATT_CUD("Temperatura płytki", BT_GATT_PERM_READ),
+	BT_GATT_CUD("Temperatura", BT_GATT_PERM_READ),
+
+	/* Internal humidity */
+	BT_GATT_CHARACTERISTIC(BT_UUID_HUMIDITY,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
+			       BT_GATT_PERM_READ,
+			       read_humidity, NULL, NULL),
+	BT_GATT_CUD("Wilgotność", BT_GATT_PERM_READ),
 
 	/* External temperature */
 	BT_GATT_CHARACTERISTIC(BT_UUID_HEAT_INDEX,
 			       BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,
 			       BT_GATT_PERM_WRITE,
 			       NULL, write_temperature, NULL),
-	BT_GATT_CUD("Temperatura zewnętrzna", BT_GATT_PERM_WRITE),
+	BT_GATT_CUD("Temperatura zadana", BT_GATT_PERM_WRITE),
 };
 static struct bt_gatt_service logger_svc = BT_GATT_SERVICE(logger_attrs);
 
@@ -60,6 +72,16 @@ static ssize_t read_temperature(struct bt_conn *conn,
 				void *buf, u16_t len, u16_t offset)
 {
 	u16_t value = temp_in;
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, &value,
+				 sizeof(value));
+}
+
+static ssize_t read_humidity(struct bt_conn *conn,
+			     const struct bt_gatt_attr *attr,
+			     void *buf, u16_t len, u16_t offset)
+{
+	s16_t value = humidity_in;
 
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, &value,
 				 sizeof(value));
@@ -79,7 +101,7 @@ static ssize_t write_temperature(struct bt_conn *conn,
 	temp_out = *val;
 	printk("otrzymana temperatura = %d\n", temp_out);
 
-	bt_gatt_notify(conn, &logger_attrs[2], buf, sizeof(*val));
+	bt_gatt_notify(conn, &logger_attrs[4], buf, sizeof(*val));
 
 	return len;
 }
