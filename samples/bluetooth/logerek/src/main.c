@@ -8,7 +8,6 @@
 
 #include <stdbool.h>
 #include <zephyr/types.h>
-#include <stddef.h>
 #include <string.h>
 #include <errno.h>
 #include <misc/printk.h>
@@ -22,6 +21,8 @@
 #include <bluetooth/gatt.h>
 
 #include <gatt/bas.h>
+
+#include "system.h"
 
 s16_t temp_in = 0xBABA;
 u16_t humidity_in = 0xBACA;
@@ -62,7 +63,7 @@ static struct bt_gatt_attr logger_attrs[] = {
 			       BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,
 			       BT_GATT_PERM_WRITE,
 			       NULL, write_temperature, NULL),
-	BT_GATT_CUD("Temperatura zadana", BT_GATT_PERM_WRITE),
+	BT_GATT_CUD("Temperatura zadana", BT_GATT_PERM_READ),
 };
 static struct bt_gatt_service logger_svc = BT_GATT_SERVICE(logger_attrs);
 
@@ -163,6 +164,11 @@ void main(void)
 	}
 
 	bt_conn_cb_register(&conn_callbacks);
+
+	err = system_app_init();
+	if (err) {
+		printk("System_app init failed (err %d)\n", err);
+	}
 
 	while (1) {
 		k_sleep(MSEC_PER_SEC);
