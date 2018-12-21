@@ -23,6 +23,7 @@
 #include <gatt/bas.h>
 
 #include "peripherals.h"
+#include "peripherals/sensory.h"
 
 s16_t temp_in = 0xBABA;
 u16_t humidity_in = 0xBACA;
@@ -72,7 +73,7 @@ static ssize_t read_temperature(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
 				void *buf, u16_t len, u16_t offset)
 {
-	u16_t value = temp_in;
+	s16_t value = (s16_t)sensory_get_temperature();
 
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, &value,
 				 sizeof(value));
@@ -82,7 +83,7 @@ static ssize_t read_humidity(struct bt_conn *conn,
 			     const struct bt_gatt_attr *attr,
 			     void *buf, u16_t len, u16_t offset)
 {
-	s16_t value = humidity_in;
+	s16_t value = (s16_t)sensory_get_humidity();
 
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, &value,
 				 sizeof(value));
@@ -167,7 +168,7 @@ void main(void)
 
 	err = peripherals_init();
 	if (err) {
-		return ;
+		return;
 	}
 
 	while (1) {

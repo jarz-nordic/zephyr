@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2018
- *	Jakub Rzeszutko all rights reserved.
+ * Copyright (c) 2018 Jakub Rzeszutko all rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +36,12 @@ enum screen_ids {
 	SCREEN_SENSORS = 1,
 	SCREEN_STATS = 2,
 	SCREEN_LAST,
+};
+
+enum font_size {
+	FONT_BIG = 0,
+	FONT_MEDIUM = 1,
+	FONT_SMALL = 2,
 };
 
 /* Function initializing display */

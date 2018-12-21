@@ -39,8 +39,8 @@
 #define PULL_UP 0
 #endif
 
-#define EDGE (GPIO_INT_EDGE | GPIO_INT_DOUBLE_EDGE)
-#define LONG_PRESS_TIMEOUT K_SECONDS(1)
+#define EDGE			(GPIO_INT_EDGE | GPIO_INT_DOUBLE_EDGE)
+#define LONG_PRESS_TIMEOUT	K_SECONDS(1)
 
 static struct k_delayed_work long_press_work;
 static struct device *gpio;
