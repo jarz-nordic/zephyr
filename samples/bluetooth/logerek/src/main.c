@@ -22,7 +22,7 @@
 
 #include <gatt/bas.h>
 
-#include "system.h"
+#include "peripherals.h"
 
 s16_t temp_in = 0xBABA;
 u16_t humidity_in = 0xBACA;
@@ -165,9 +165,10 @@ void main(void)
 
 	bt_conn_cb_register(&conn_callbacks);
 
-	err = system_app_init();
+	err = peripherals_init();
 	if (err) {
-		printk("System_app init failed (err %d)\n", err);
+		printk("Peripherals init failed (err %d)\n", err);
+		return;
 	}
 
 	while (1) {

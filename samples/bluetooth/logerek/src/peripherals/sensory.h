@@ -3,10 +3,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#ifndef SYSTEM_APP_H__
-#define SYSTEM_APP_H__
+#ifndef SENSORY_H__
+#define SENSORY_H__
 
-int system_app_init(void);
+int sensory_init(void);
 
 #endif
 

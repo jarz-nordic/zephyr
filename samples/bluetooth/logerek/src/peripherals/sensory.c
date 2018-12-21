@@ -14,21 +14,16 @@ struct k_thread sensors_thread;
 static k_thread_stack_t *stack = sensors_thread_stack;
 
 
-extern s16_t temp_out;
-
 static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
 	while (1) {
-		printk("BT_temp = %d\n", temp_out);
 		k_sleep(1000);
 	}
 }
 
 
-int system_app_init(void)
+int sensory_init(void)
 {
-	printk("test\n");
-
 	k_tid_t tid = k_thread_create(&sensors_thread,
 				      stack,
 				      SENSORY_STACK_SIZE,
