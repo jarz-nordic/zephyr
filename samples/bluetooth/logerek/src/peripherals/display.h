@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018 Jakub Rzeszutko all rights reserved.
+ * Copyright (c) 2018
+ *	Jakub Rzeszutko all rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,20 +29,20 @@
  *
  */
 
-#ifndef BUTTON_H__
-#define BUTTON_H__
+#ifndef DISPLAY_H__
+#define DISPLAY_H__
 
-enum button_idx {
-	BUTTON1,
-	BUTTON2,
-	BUTTON3,
-	BUTTON4,
-	BUTTON_MAX
+enum screen_ids {
+	SCREEN_MAIN = 0,
+	SCREEN_SENSORS = 1,
+	SCREEN_STATS = 2,
+	SCREEN_LAST,
 };
 
-/* Function initializing buttons */
-int button_init(void);
+/* Function initializing display */
+int display_init(void);
+void display_screen_set(enum screen_ids id);
+enum screen_ids display_screen_get(void);
+void display_screen_increment(void);
 
-int button_get(enum button_idx idx, bool *status);
-
-#endif /* BUTTON_H__ */
+#endif /* DISPLAY_H__ */

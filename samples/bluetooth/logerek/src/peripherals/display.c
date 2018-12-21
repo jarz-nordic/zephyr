@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018 Jakub Rzeszutko all rights reserved.
+ * Copyright (c) 2018
+ *	Jakub Rzeszutko all rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,20 +29,70 @@
  *
  */
 
-#ifndef BUTTON_H__
-#define BUTTON_H__
+#include <zephyr.h>
+#include <display/cfb.h>
 
-enum button_idx {
-	BUTTON1,
-	BUTTON2,
-	BUTTON3,
-	BUTTON4,
-	BUTTON_MAX
-};
+#include "display.h"
 
-/* Function initializing buttons */
-int button_init(void);
+static struct k_delayed_work epd_work;
+static u8_t screen_id = SCREEN_MAIN;
+static struct device *epd_dev;
 
-int button_get(enum button_idx idx, bool *status);
+static inline void display_refresh(void)
+{
+	k_delayed_work_submit(&epd_work, K_NO_WAIT);
+}
 
-#endif /* BUTTON_H__ */
+static void show_statistics(void)
+{
+}
+
+static void show_sensors_data(s32_t interval)
+{
+
+}
+
+static void show_main(void)
+{
+
+}
+
+static void epd_update(struct k_work *work)
+{
+	switch (screen_id) {
+	case SCREEN_STATS:
+		show_statistics();
+		return;
+	case SCREEN_SENSORS:
+		show_sensors_data(K_SECONDS(2));
+		return;
+	case SCREEN_MAIN:
+		show_main();
+		return;
+	}
+}
+
+
+int display_init(void)
+{
+	k_delayed_work_init(&epd_work, epd_update);
+	return 0;
+}
+
+void display_screen_set(enum screen_ids id)
+{
+
+	display_refresh();
+}
+
+enum screen_ids display_screen_get(void)
+{
+	return screen_id;
+}
+
+void display_screen_increment(void)
+{
+	screen_id = (screen_id + 1) % SCREEN_LAST;
+
+	display_refresh();
+}

@@ -167,8 +167,7 @@ void main(void)
 
 	err = peripherals_init();
 	if (err) {
-		printk("Peripherals init failed (err %d)\n", err);
-		return;
+		return ;
 	}
 
 	while (1) {

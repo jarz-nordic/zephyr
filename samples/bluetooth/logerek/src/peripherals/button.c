@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2018
- *	Jakub Rzeszutko all rights reserved.
+ * Copyright (c) 2018 Jakub Rzeszutko all rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +31,57 @@
 #include <gpio.h>
 
 #include "button.h"
+#include "display.h"
 
-static int configure_button(void)
+#ifdef SW0_GPIO_FLAGS
+#define PULL_UP SW0_GPIO_FLAGS
+#else
+#define PULL_UP 0
+#endif
+
+#define EDGE (GPIO_INT_EDGE | GPIO_INT_DOUBLE_EDGE)
+#define LONG_PRESS_TIMEOUT K_SECONDS(1)
+
+static struct k_delayed_work long_press_work;
+static struct device *gpio;
+static bool pressed;
+
+static void long_press(struct k_work *work)
+{
+	/* Treat as release so actual release doesn't send messages */
+	pressed = false;
+	display_screen_increment();
+	printk("Change screen to id = %d\n", display_screen_get());
+}
+
+static bool button_is_pressed(void)
+{
+	u32_t val;
+
+	gpio_pin_read(gpio, SW0_GPIO_PIN, &val);
+
+	return !val;
+}
+
+static void button_interrupt(struct device *dev, struct gpio_callback *cb,
+			     u32_t pins)
+{
+	if (button_is_pressed() == pressed) {
+		return;
+	}
+
+	pressed = !pressed;
+	printk("Button %s\n", pressed ? "pressed" : "released");
+
+	if (pressed) {
+		k_delayed_work_submit(&long_press_work, LONG_PRESS_TIMEOUT);
+		return;
+	}
+
+	k_delayed_work_cancel(&long_press_work);
+}
+
+int button_init(void)
 {
 	static struct gpio_callback button_cb;
 
@@ -50,10 +98,7 @@ static int configure_button(void)
 
 	gpio_pin_enable_callback(gpio, SW0_GPIO_PIN);
 
-	return 0;
-}
-int button_init(void)
-{
+	k_delayed_work_init(&long_press_work, long_press);
 
 	return 0;
 }

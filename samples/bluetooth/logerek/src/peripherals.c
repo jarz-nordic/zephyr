@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2018
- *	Jakub Rzeszutko all rights reserved.
+ * Copyright (c) 2018 Jakub Rzeszutko all rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +32,7 @@
 #include "peripherals/led.h"
 #include "peripherals/button.h"
 #include "peripherals/sensory.h"
+#include "peripherals/display.h"
 
 int peripherals_init(void)
 {
@@ -46,7 +46,7 @@ int peripherals_init(void)
 
 	err = button_init();
 	if (err) {
-		printk("LED initialization failed: err %d\n", err);
+		printk("Button initialization failed: err %d\n", err);
 		return err;
 	}
 
@@ -54,6 +54,12 @@ int peripherals_init(void)
 	err = sensory_init();
 	if (err) {
 		printk("Sensors initialization failed: err %d\n", err);
+		return err;
+	}
+
+	err = display_init();
+	if (err) {
+		printk("Display initialization failed: err %d\n", err);
 		return err;
 	}
 
