@@ -8,8 +8,11 @@
 #include <gpio.h>
 #include <sensor.h>
 #include <misc/printk.h>
+#include <logging/log.h>
 
 #include "sensory.h"
+
+LOG_MODULE_REGISTER(sensory, LOG_LEVEL_DBG);
 
 #define SENSORY_STACK_SIZE	(1024U)
 
@@ -25,8 +28,10 @@ static K_THREAD_STACK_DEFINE(sensors_thread_stack, SENSORY_STACK_SIZE);
 static k_thread_stack_t *stack = sensors_thread_stack;
 static const char *thread_name = "sensory";
 struct k_thread sensors_thread;
-s32_t temperature = INVALID_SENSOR_VALUE;
-s32_t humidity = INVALID_SENSOR_VALUE;
+
+static s32_t temperature_external = INVALID_SENSOR_VALUE;
+static s32_t temperature = INVALID_SENSOR_VALUE;
+static s32_t humidity = INVALID_SENSOR_VALUE;
 
 struct device_info {
 	struct device *dev;
@@ -52,8 +57,8 @@ static int get_hdc1010_val(void)
 	struct sensor_value sensor;
 
 	if (sensor_sample_fetch(dev_info[DEV_IDX_HDC1010].dev)) {
-		printk("Failed to fetch sample for device %s\n",
-		       dev_info[DEV_IDX_HDC1010].name);
+		LOG_ERR("Failed to fetch sample for device %s",
+			dev_info[DEV_IDX_HDC1010].name);
 
 		temperature = INVALID_SENSOR_VALUE;
 		humidity = INVALID_SENSOR_VALUE;
@@ -63,18 +68,18 @@ static int get_hdc1010_val(void)
 	if (sensor_channel_get(dev_info[DEV_IDX_HDC1010].dev,
 			       SENSOR_CHAN_AMBIENT_TEMP, &sensor)) {
 		temperature = INVALID_SENSOR_VALUE;
+		LOG_ERR("Invalid Temperature value");
 		return -1;
 	}
-	temperature = sensor.val1 * 10 + sensor.val1 / 100000;
+	temperature = sensor.val1 * 10 + sensor.val2 / 100000;
 
 	if (sensor_channel_get(dev_info[DEV_IDX_HDC1010].dev,
 			       SENSOR_CHAN_HUMIDITY, &sensor)) {
 		humidity = INVALID_SENSOR_VALUE;
+		LOG_ERR("Invalid Humidity value");
 		return -1;
 	}
 	humidity = sensor.val1;
-
-	printk("T = %d\nH = %d\n", temperature, humidity);
 
 	return 0;
 }
@@ -84,13 +89,14 @@ static int get_hdc1010_val(void)
 static int get_mma8652_val(struct sensor_value *val)
 {
 	if (sensor_sample_fetch(dev_info[DEV_IDX_MMA8652].dev)) {
-		printk("Failed to fetch sample for device %s\n",
+		LOG_ERR("Failed to fetch sample for device %s\n",
 		       dev_info[DEV_IDX_MMA8652].name);
 		return -1;
 	}
 
 	if (sensor_channel_get(dev_info[DEV_IDX_MMA8652].dev,
 			       SENSOR_CHAN_ACCEL_XYZ, &val[0])) {
+		LOG_ERR("Invalid Accelerometer value");
 		return -1;
 	}
 
@@ -101,18 +107,20 @@ static int get_mma8652_val(struct sensor_value *val)
 static int get_apds9960_val(struct sensor_value *val)
 {
 	if (sensor_sample_fetch(dev_info[DEV_IDX_APDS9960].dev)) {
-		printk("Failed to fetch sample for device %s\n",
+		LOG_ERR("Failed to fetch sample for device %s\n",
 		       dev_info[DEV_IDX_APDS9960].name);
 		return -1;
 	}
 
 	if (sensor_channel_get(dev_info[DEV_IDX_APDS9960].dev,
 			       SENSOR_CHAN_LIGHT, &val[0])) {
+		LOG_ERR("Invalid Light value");
 		return -1;
 	}
 
 	if (sensor_channel_get(dev_info[DEV_IDX_APDS9960].dev,
 			       SENSOR_CHAN_PROX, &val[1])) {
+		LOG_ERR("Invalid proximity value");
 		return -1;
 	}
 
@@ -123,7 +131,7 @@ static int get_apds9960_val(struct sensor_value *val)
 static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
 	while (1) {
-
+		LOG_DBG("sensors thread tick");
 		get_hdc1010_val();
 
 		k_sleep(K_SECONDS(15));
@@ -135,7 +143,7 @@ int sensory_init(void)
 	for (u8_t i = 0; i < ARRAY_SIZE(dev_info); i++) {
 		dev_info[i].dev = device_get_binding(dev_info[i].name);
 		if (dev_info[i].dev == NULL) {
-			printk("Failed to get %s device\n", dev_info[i].name);
+			LOG_ERR("Failed to get %s device", dev_info[i].name);
 			return -EBUSY;
 		}
 	}
@@ -161,7 +169,19 @@ int sensory_get_temperature(void)
 	return temperature;
 }
 
+int sensory_get_temperature_external(void)
+{
+	return temperature_external;
+}
+
+void sensory_set_temperature_external(s16_t tmp)
+{
+	temperature_external = tmp;
+}
+
 int sensory_get_humidity(void)
 {
 	return humidity;
 }
+
+

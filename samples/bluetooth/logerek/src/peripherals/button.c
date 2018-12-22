@@ -29,9 +29,12 @@
  */
 #include <zephyr.h>
 #include <gpio.h>
+#include <logging/log.h>
 
 #include "button.h"
 #include "display.h"
+
+LOG_MODULE_REGISTER(button, LOG_LEVEL_DBG);
 
 #ifdef SW0_GPIO_FLAGS
 #define PULL_UP SW0_GPIO_FLAGS
@@ -51,7 +54,7 @@ static void long_press(struct k_work *work)
 	/* Treat as release so actual release doesn't send messages */
 	pressed = false;
 	display_screen_increment();
-	printk("Change screen to id = %d\n", display_screen_get());
+	LOG_ERR("Change screen to id = %d", display_screen_get());
 }
 
 static bool button_is_pressed(void)
@@ -71,7 +74,7 @@ static void button_interrupt(struct device *dev, struct gpio_callback *cb,
 	}
 
 	pressed = !pressed;
-	printk("Button %s\n", pressed ? "pressed" : "released");
+	LOG_DBG("Button %s\n", pressed ? "pressed" : "released");
 
 	if (pressed) {
 		k_delayed_work_submit(&long_press_work, LONG_PRESS_TIMEOUT);

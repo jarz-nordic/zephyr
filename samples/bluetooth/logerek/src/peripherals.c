@@ -28,11 +28,14 @@
  *
  */
 #include <zephyr.h>
+#include <logging/log.h>
 
 #include "peripherals/led.h"
 #include "peripherals/button.h"
 #include "peripherals/sensory.h"
 #include "peripherals/display.h"
+
+LOG_MODULE_REGISTER(peripherals, LOG_LEVEL_DBG);
 
 int peripherals_init(void)
 {
@@ -40,30 +43,30 @@ int peripherals_init(void)
 
 	err = led_init();
 	if (err) {
-		printk("LED initialization failed: err %d\n", err);
+		LOG_ERR("LED initialization failed: err %d", err);
 		return err;
 	}
 
 	err = button_init();
 	if (err) {
-		printk("Button initialization failed: err %d\n", err);
+		LOG_ERR("Button initialization failed: err %d", err);
 		return err;
 	}
 
 	/* starting sensors thread */
 	err = sensory_init();
 	if (err) {
-		printk("Sensors initialization failed: err %d\n", err);
+		LOG_ERR("Sensors initialization failed: err %d", err);
 		return err;
 	}
 
 	err = display_init();
 	if (err) {
-		printk("Display initialization failed: err %d\n", err);
+		LOG_ERR("Display initialization failed: err %d", err);
 		return err;
 	}
 
-	printk("Peripherals initialized\n");
+	LOG_INF("Peripherals initialized");
 
 	return 0;
 }

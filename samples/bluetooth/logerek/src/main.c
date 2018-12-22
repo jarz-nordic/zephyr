@@ -10,9 +10,9 @@
 #include <zephyr/types.h>
 #include <string.h>
 #include <errno.h>
-#include <misc/printk.h>
 #include <misc/byteorder.h>
 #include <zephyr.h>
+#include <logging/log.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -25,9 +25,7 @@
 #include "peripherals.h"
 #include "peripherals/sensory.h"
 
-s16_t temp_in = 0xBABA;
-u16_t humidity_in = 0xBACA;
-s16_t temp_out;
+LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 static ssize_t read_temperature(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
@@ -66,6 +64,7 @@ static struct bt_gatt_attr logger_attrs[] = {
 			       NULL, write_temperature, NULL),
 	BT_GATT_CUD("Temperatura zadana", BT_GATT_PERM_READ),
 };
+
 static struct bt_gatt_service logger_svc = BT_GATT_SERVICE(logger_attrs);
 
 
@@ -84,6 +83,7 @@ static ssize_t read_humidity(struct bt_conn *conn,
 			     void *buf, u16_t len, u16_t offset)
 {
 	s16_t value = (s16_t)sensory_get_humidity();
+	value = value > 100 ? 255 : value;
 
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, &value,
 				 sizeof(value));
@@ -95,13 +95,14 @@ static ssize_t write_temperature(struct bt_conn *conn,
 				 u8_t flags)
 {
 	const s16_t *val = buf;
+	s16_t temperature = *val;
 
 	if (len != 2) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
 
-	temp_out = *val;
-	printk("otrzymana temperatura = %d\n", temp_out);
+	LOG_DBG("otrzymana temperatura = %d", temperature);
+	sensory_set_temperature_external(temperature);
 
 	bt_gatt_notify(conn, &logger_attrs[4], buf, sizeof(*val));
 
@@ -112,15 +113,15 @@ static ssize_t write_temperature(struct bt_conn *conn,
 static void connected(struct bt_conn *conn, u8_t err)
 {
 	if (err) {
-		printk("Connection failed (err %u)\n", err);
+		LOG_ERR("Connection failed (err %u)", err);
 	} else {
-		printk("Connected\n");
+		LOG_WRN("Connected");
 	}
 }
 
 static void disconnected(struct bt_conn *conn, u8_t reason)
 {
-	printk("Disconnected (reason %u)\n", reason);
+	LOG_WRN("Disconnected (reason %u)", reason);
 }
 
 static struct bt_conn_cb conn_callbacks = {
@@ -136,22 +137,22 @@ static const struct bt_data ad[] = {
 static void bt_ready(int err)
 {
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		LOG_ERR("Bluetooth init failed (err %d)", err);
 		return;
 	}
 
-	printk("Bluetooth initialized\n");
+	LOG_INF("Bluetooth initialized");
 
 	bas_init();
 	bt_gatt_service_register(&logger_svc);
 
 	err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, ad, ARRAY_SIZE(ad), NULL, 0);
 	if (err) {
-		printk("Advertising failed to start (err %d)\n", err);
+		LOG_ERR("Advertising failed to start (err %d)", err);
 		return;
 	}
 
-	printk("Advertising successfully started\n");
+	LOG_INF("Advertising successfully started");
 }
 
 void main(void)
@@ -160,7 +161,7 @@ void main(void)
 
 	err = bt_enable(bt_ready);
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		LOG_ERR("Bluetooth init failed (err %d)", err);
 		return;
 	}
 

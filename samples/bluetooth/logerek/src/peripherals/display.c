@@ -36,8 +36,12 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <logging/log.h>
+
 #include "sensory.h"
 #include "display.h"
+
+LOG_MODULE_REGISTER(display, LOG_LEVEL_DBG);
 
 static struct k_delayed_work epd_work;
 static u8_t screen_id = SCREEN_SENSORS;
@@ -102,7 +106,7 @@ static size_t print_line(enum font_size font_size, int row, const char *text,
 	cfb_get_font_size(epd_dev, font_size, &font_width, &font_height);
 
 	if (cfb_print(epd_dev, line, font_width * pad, font_height * row)) {
-		printk("Failed to print a string\n");
+		LOG_ERR("Failed to print a string");
 	}
 
 	return len;
@@ -220,7 +224,7 @@ static void show_main(void)
 
 static void epd_update(struct k_work *work)
 {
-	printk("Odswiezam\n");
+	LOG_DBG("Odswiezam");
 	switch (screen_id) {
 	case SCREEN_STATS:
 		show_statistics();
@@ -232,7 +236,7 @@ static void epd_update(struct k_work *work)
 		show_main();
 		return;
 	default:
-		printk("fatal display error\n");
+		LOG_ERR("fatal display error");
 		return;
 	}
 }
@@ -242,12 +246,12 @@ int display_init(void)
 {
 	epd_dev = device_get_binding(DT_SSD1673_DEV_NAME);
 	if (epd_dev == NULL) {
-		printk("SSD1673 device not found\n");
+		LOG_ERR("SSD1673 device not found");
 		return -ENODEV;
 	}
 
 	if (cfb_framebuffer_init(epd_dev)) {
-		printk("Framebuffer initialization failed\n");
+		LOG_ERR("Framebuffer initialization failed");
 		return -EIO;
 	}
 

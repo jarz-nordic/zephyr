@@ -29,8 +29,11 @@
  */
 #include <zephyr.h>
 #include <gpio.h>
+#include <logging/log.h>
 
 #include "led.h"
+
+LOG_MODULE_REGISTER(led, LOG_LEVEL_DBG);
 
 struct k_delayed_work led_init_timer;
 
@@ -73,7 +76,7 @@ int led_init(void)
 	for (u8_t i = 0; i < ARRAY_SIZE(leds); i++) {
 		leds[i].dev = device_get_binding(leds[i].name);
 		if (!leds[i].dev) {
-			printk("Failed to get %s device\n", leds[i].name);
+			LOG_ERR("Failed to get %s device", leds[i].name);
 			return -ENODEV;
 		}
 
@@ -95,6 +98,7 @@ int led_set(enum led_idx idx, bool status)
 	u32_t value = status ? 1 : 0;
 
 	gpio_pin_write(leds[idx].dev, leds[idx].pin, value);
+	LOG_DBG("LED[%d] status changed to: %s", idx, status ? "on" : "off");
 
 	return 0;
 }

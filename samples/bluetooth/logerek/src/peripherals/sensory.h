@@ -11,6 +11,7 @@
 int sensory_init(void);
 int sensory_get_temperature(void);
 int sensory_get_humidity(void);
+void sensory_set_temperature_external(s16_t tmp);
 
 #endif
 
