@@ -32,20 +32,23 @@
 #include <zephyr.h>
 #include <display/cfb.h>
 #include <sensor.h>
+#include <version.h>
+#include <logging/log.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-#include <logging/log.h>
 
 #include "sensory.h"
 #include "display.h"
 
-LOG_MODULE_REGISTER(display, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_display, LOG_LEVEL_DBG);
 
 static struct k_delayed_work epd_work;
-static u8_t screen_id = SCREEN_SENSORS;
+static u8_t screen_id = SCREEN_BOOT;
 static struct device *epd_dev;
+static char str_buf[280];
 
 struct font_info {
 	u8_t columns;
@@ -149,72 +152,68 @@ static inline void display_refresh(void)
 	k_delayed_work_submit(&epd_work, K_NO_WAIT);
 }
 
-static void show_statistics(void)
+static void show_boot_banner(int time)
 {
+	snprintf(str_buf, sizeof(str_buf), "Booting Zephyr OS\n"
+		"Version: %s",
+		 KERNEL_VERSION_STRING);
+
+	display_medium(str_buf, false, 2000);
 }
 
 static void show_sensors_data(s32_t interval)
 {
+	static s32_t old_external_tmp = INVALID_SENSOR_VALUE;
 	static s32_t old_tmp = INVALID_SENSOR_VALUE;
 	static s32_t old_hum = INVALID_SENSOR_VALUE;
 
+	s32_t external_tmp = sensory_get_temperature_external();
 	s32_t temperature = sensory_get_temperature();
 	s32_t humidity = sensory_get_humidity();
-	char str_buf[150];
-	u8_t line = 0U;
-	u16_t len = 0U;
 
-	if ((temperature == old_tmp) && (humidity == old_hum)) {
+	u16_t len = 0U;
+	u16_t len2 = 0U;
+
+	if ((temperature == old_tmp) && (humidity == old_hum) &&
+	    (old_external_tmp != external_tmp)) {
 		return;
 	}
 
+	old_external_tmp = external_tmp;
 	old_tmp = temperature;
 	old_hum = humidity;
 
-	cfb_framebuffer_clear(epd_dev, false);
-
 	if (temperature != INVALID_SENSOR_VALUE) {
 		len = snprintf(str_buf, sizeof(str_buf),
-				"Temperature:%d.%d C\n",
-				temperature / 10, temperature % 10);
+				"Dom : %d.%dC\n",
+				temperature / 10, abs(temperature % 10));
 	} else {
 		len = snprintf(str_buf, sizeof(str_buf),
-				"Temperature: N/A C\n");
+				"Dom : N/A C\n");
 	}
-
-	print_line(FONT_SMALL, line++, str_buf, len, false);
 
 	if (humidity != INVALID_SENSOR_VALUE) {
-		len = snprintf(str_buf, sizeof(str_buf), "Humidity:%d%%\n",
+		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
+				"Dom : %d%% H\n",
 				humidity);
 	} else {
-		len = snprintf(str_buf, sizeof(str_buf),
-				"Humidity: N/A %%\n");
+		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
+				"Dom : N/A %% H\n");
 	}
-	print_line(FONT_SMALL, line++, str_buf, len, false);
 
-#if 0
-	len = snprintf(str_buf, sizeof(str_buf), "AX :%10.3f\n",
-		       sensor_value_to_double(&val[0]));
-	print_line(FONT_SMALL, line++, str_buf, len, false);
+	if (old_external_tmp != INVALID_SENSOR_VALUE) {
+		len = snprintf(str_buf + len + len2,
+				sizeof(str_buf) - len - len2,
+				"Pole:%d.%dC\n",
+				external_tmp / 10,
+				abs(external_tmp % 10));
+	} else {
+		len = snprintf(str_buf + len + len2,
+				sizeof(str_buf) - len - len2,
+				"Pole: N/A C");
+	}
 
-	len = snprintf(str_buf, sizeof(str_buf), "AY :%10.3f\n",
-		       sensor_value_to_double(&val[1]));
-	print_line(FONT_SMALL, line++, str_buf, len, false);
-
-	len = snprintf(str_buf, sizeof(str_buf), "AZ :%10.3f\n",
-		       sensor_value_to_double(&val[2]));
-	print_line(FONT_SMALL, line++, str_buf, len, false);
-
-	len = snprintf(str_buf, sizeof(str_buf), "Light :%d\n", val[0].val1);
-	print_line(FONT_SMALL, line++, str_buf, len, false);
-	len = snprintf(str_buf, sizeof(str_buf), "Proximity:%d\n", val[1].val1);
-	print_line(FONT_SMALL, line++, str_buf, len, false);
-#endif
-
-	cfb_framebuffer_finalize(epd_dev);
-
-	k_delayed_work_submit(&epd_work, interval);
+	display_big(str_buf, false, interval);
 }
 
 static void show_main(void)
@@ -224,21 +223,24 @@ static void show_main(void)
 
 static void epd_update(struct k_work *work)
 {
-	LOG_DBG("Odswiezam");
+	LOG_ERR("Running screen display = %d", screen_id);
+
 	switch (screen_id) {
-	case SCREEN_STATS:
-		show_statistics();
-		return;
+	case SCREEN_BOOT:
+		show_boot_banner(K_SECONDS(5));
+		break;
 	case SCREEN_SENSORS:
-		show_sensors_data(K_SECONDS(2));
-		return;
-	case SCREEN_MAIN:
+		show_sensors_data(K_FOREVER);
+		break;
+	case SCREEN_PYSZCZEK:
 		show_main();
-		return;
+		break;
 	default:
 		LOG_ERR("fatal display error");
 		return;
 	}
+
+	screen_id = SCREEN_SENSORS;
 }
 
 
@@ -259,14 +261,22 @@ int display_init(void)
 
 	cfb_framebuffer_clear(epd_dev, true);
 
-	display_refresh();
+	k_delayed_work_submit(&epd_work, K_NO_WAIT);
 
 	return 0;
 }
 
-void display_screen_set(enum screen_ids id)
+int display_screen(enum screen_ids id)
 {
+	if (id >= SCREEN_LAST) {
+		LOG_ERR("Requested screem does not exist");
+		return -EINVAL;
+	}
+
+	screen_id = id;
 	display_refresh();
+
+	return 0;
 }
 
 enum screen_ids display_screen_get(void)
@@ -278,5 +288,5 @@ void display_screen_increment(void)
 {
 	screen_id = (screen_id + 1) % SCREEN_LAST;
 
-	display_refresh();
+	//display_refresh();
 }

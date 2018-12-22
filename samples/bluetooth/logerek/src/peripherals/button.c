@@ -34,7 +34,7 @@
 #include "button.h"
 #include "display.h"
 
-LOG_MODULE_REGISTER(button, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_button, LOG_LEVEL_DBG);
 
 #ifdef SW0_GPIO_FLAGS
 #define PULL_UP SW0_GPIO_FLAGS
@@ -54,7 +54,7 @@ static void long_press(struct k_work *work)
 	/* Treat as release so actual release doesn't send messages */
 	pressed = false;
 	display_screen_increment();
-	LOG_ERR("Change screen to id = %d", display_screen_get());
+	LOG_DBG("Change screen to id = %d", display_screen_get());
 }
 
 static bool button_is_pressed(void)
@@ -94,7 +94,7 @@ int button_init(void)
 	}
 
 	gpio_pin_configure(gpio, SW0_GPIO_PIN,
-			   (GPIO_DIR_IN | GPIO_INT |  PULL_UP | EDGE));
+			   (GPIO_DIR_IN | GPIO_INT | PULL_UP | EDGE));
 
 	gpio_init_callback(&button_cb, button_interrupt, BIT(SW0_GPIO_PIN));
 	gpio_add_callback(gpio, &button_cb);

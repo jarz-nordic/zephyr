@@ -11,8 +11,9 @@
 #include <logging/log.h>
 
 #include "sensory.h"
+#include "display.h"
 
-LOG_MODULE_REGISTER(sensory, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_DBG);
 
 #define SENSORY_STACK_SIZE	(1024U)
 
@@ -131,10 +132,9 @@ static int get_apds9960_val(struct sensor_value *val)
 static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
 	while (1) {
-		LOG_DBG("sensors thread tick");
 		get_hdc1010_val();
-
-		k_sleep(K_SECONDS(15));
+		display_screen(SCREEN_SENSORS);
+		k_sleep(K_MINUTES(1));
 	}
 }
 
@@ -157,7 +157,7 @@ int sensory_init(void)
 				      NULL,
 				      K_LOWEST_APPLICATION_THREAD_PRIO,
 				      0,
-				      100);
+				      0);
 
 	k_thread_name_set(tid, thread_name);
 

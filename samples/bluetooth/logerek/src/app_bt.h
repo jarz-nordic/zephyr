@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018 Jakub Rzeszutko all rights reserved.
+ * Copyright (c) 2018
+ *	Jakub Rzeszutko all rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,46 +28,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include <zephyr.h>
-#include <logging/log.h>
 
-#include "peripherals/led.h"
-#include "peripherals/button.h"
-#include "peripherals/sensory.h"
-#include "peripherals/display.h"
+#ifndef BT_SYS_H__
+#define BT_SYS_H__
 
-LOG_MODULE_REGISTER(app_peripherals, LOG_LEVEL_DBG);
+int app_bt_init(void);
+void app_bt_process(void);
 
-int peripherals_init(void)
-{
-	int err;
-
-	err = led_init();
-	if (err) {
-		LOG_ERR("LED initialization failed: err %d", err);
-		return err;
-	}
-
-	err = button_init();
-	if (err) {
-		LOG_ERR("Button initialization failed: err %d", err);
-		return err;
-	}
-
-	err = display_init();
-	if (err) {
-		LOG_ERR("Display initialization failed: err %d", err);
-		return err;
-	}
-
-	/* starting sensors thread */
-	err = sensory_init();
-	if (err) {
-		LOG_ERR("Sensors initialization failed: err %d", err);
-		return err;
-	}
-
-	LOG_INF("Peripherals initialized");
-
-	return 0;
-}
+#endif /* BT_SYS_H__ */

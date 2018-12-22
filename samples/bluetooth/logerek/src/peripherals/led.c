@@ -33,7 +33,7 @@
 
 #include "led.h"
 
-LOG_MODULE_REGISTER(led, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_led, LOG_LEVEL_DBG);
 
 struct k_delayed_work led_init_timer;
 
@@ -59,7 +59,7 @@ static void led_init_timeout(struct k_work *work)
 	}
 
 	/* Stop after 5 iterations */
-	if (led_cntr >= (ARRAY_SIZE(leds) * 5)) {
+	if (led_cntr >= (ARRAY_SIZE(leds) * 3)) {
 		led_cntr = 0;
 		return;
 	}
