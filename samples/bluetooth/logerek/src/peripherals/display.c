@@ -223,8 +223,6 @@ static void show_main(void)
 
 static void epd_update(struct k_work *work)
 {
-	LOG_ERR("Running screen display = %d", screen_id);
-
 	switch (screen_id) {
 	case SCREEN_BOOT:
 		show_boot_banner(K_SECONDS(5));

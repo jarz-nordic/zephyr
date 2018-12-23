@@ -159,7 +159,11 @@ static void bt_ready(int err)
 	LOG_INF("Bluetooth initialized");
 
 	bas_init();
-	bt_gatt_service_register(&logger_svc);
+	err = bt_gatt_service_register(&logger_svc);
+	if (err) {
+		LOG_ERR("Services not registered (err %d)", err);
+		return;
+	}
 
 	err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, ad, ARRAY_SIZE(ad), NULL, 0);
 	if (err) {

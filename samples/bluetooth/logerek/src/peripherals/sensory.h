@@ -6,7 +6,7 @@
 #ifndef SENSORY_H__
 #define SENSORY_H__
 
-#define INVALID_SENSOR_VALUE	(s32_t)(-500000)
+#define INVALID_SENSOR_VALUE	(s32_t)(-5000)
 
 int sensory_init(void);
 int sensory_get_temperature(void);

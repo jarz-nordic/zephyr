@@ -26,6 +26,7 @@ enum periph_device {
 };
 
 static K_THREAD_STACK_DEFINE(sensors_thread_stack, SENSORY_STACK_SIZE);
+static struct k_delayed_work temperature_external_timeout;
 static k_thread_stack_t *stack = sensors_thread_stack;
 static const char *thread_name = "sensory";
 struct k_thread sensors_thread;
@@ -51,6 +52,11 @@ static struct device_info dev_info[] = {
 	{ NULL, DT_APDS9960_DRV_NAME },	/* RGB gesture */
 	{ NULL, DT_SSD1673_DEV_NAME },	/* epaper */
 };
+
+static void timeout_handle(struct k_work *work)
+{
+	temperature_external = INVALID_SENSOR_VALUE;
+}
 
 /* humidity & temperature */
 static int get_hdc1010_val(void)
@@ -140,6 +146,8 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 
 int sensory_init(void)
 {
+	k_delayed_work_init(&temperature_external_timeout, timeout_handle);
+
 	for (u8_t i = 0; i < ARRAY_SIZE(dev_info); i++) {
 		dev_info[i].dev = device_get_binding(dev_info[i].name);
 		if (dev_info[i].dev == NULL) {
@@ -176,7 +184,11 @@ int sensory_get_temperature_external(void)
 
 void sensory_set_temperature_external(s16_t tmp)
 {
-	temperature_external = tmp;
+	if ((tmp >= -50) && (tmp <= 125)) {
+		temperature_external = tmp;
+		k_delayed_work_submit(&temperature_external_timeout,
+				      K_SECONDS(90));
+	}
 }
 
 int sensory_get_humidity(void)
