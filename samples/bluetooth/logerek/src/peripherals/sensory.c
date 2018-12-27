@@ -13,7 +13,7 @@
 #include "sensory.h"
 #include "display.h"
 
-LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_INF);
 
 #define SENSORY_STACK_SIZE	(1024U)
 
@@ -138,6 +138,7 @@ static int get_apds9960_val(struct sensor_value *val)
 static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
 	while (1) {
+		LOG_DBG("Sensors thread tick");
 		get_hdc1010_val();
 		display_screen(SCREEN_SENSORS);
 		k_sleep(K_MINUTES(1));
@@ -165,7 +166,7 @@ int sensory_init(void)
 				      NULL,
 				      K_LOWEST_APPLICATION_THREAD_PRIO,
 				      0,
-				      0);
+				      1000);
 
 	k_thread_name_set(tid, thread_name);
 
@@ -184,7 +185,7 @@ int sensory_get_temperature_external(void)
 
 void sensory_set_temperature_external(s16_t tmp)
 {
-	if ((tmp >= -50) && (tmp <= 125)) {
+	if ((tmp >= -500) && (tmp <= 1250)) {
 		temperature_external = tmp;
 		k_delayed_work_submit(&temperature_external_timeout,
 				      K_SECONDS(90));

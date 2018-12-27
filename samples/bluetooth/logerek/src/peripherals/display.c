@@ -43,7 +43,7 @@
 #include "sensory.h"
 #include "display.h"
 
-LOG_MODULE_REGISTER(app_display, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_display, LOG_LEVEL_INF);
 
 static struct k_delayed_work epd_work;
 static u8_t screen_id = SCREEN_BOOT;
@@ -194,7 +194,7 @@ static void show_sensors_data(s32_t interval)
 
 	if (humidity != INVALID_SENSOR_VALUE) {
 		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
-				"Dom : %d%% H\n",
+				"Dom : %3d%% H\n",
 				humidity);
 	} else {
 		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
@@ -204,8 +204,9 @@ static void show_sensors_data(s32_t interval)
 	if (old_external_tmp != INVALID_SENSOR_VALUE) {
 		len = snprintf(str_buf + len + len2,
 				sizeof(str_buf) - len - len2,
-				"Pole:%d.%dC\n",
-				external_tmp / 10,
+				"Pole:%c%d.%dC\n",
+				external_tmp > 0 ? ' ' : '-',
+				abs(external_tmp / 10),
 				abs(external_tmp % 10));
 	} else {
 		len = snprintf(str_buf + len + len2,
