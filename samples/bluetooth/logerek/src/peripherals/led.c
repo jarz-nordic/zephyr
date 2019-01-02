@@ -46,6 +46,7 @@ struct led_device_info {
 	{ .name = LED1_GPIO_CONTROLLER, .pin = LED1_GPIO_PIN, },
 	{ .name = LED2_GPIO_CONTROLLER, .pin = LED2_GPIO_PIN, },
 	{ .name = LED3_GPIO_CONTROLLER, .pin = LED3_GPIO_PIN, },
+	{ .name = DT_GPIO_LEDS_LED_POWER_GPIO_CONTROLLER, .pin = DT_GPIO_LEDS_LED_POWER_GPIO_PIN, }
 };
 
 static void led_init_timeout(struct k_work *work)

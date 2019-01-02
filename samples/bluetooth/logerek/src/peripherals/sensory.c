@@ -12,6 +12,7 @@
 
 #include "sensory.h"
 #include "display.h"
+#include "led.h"
 
 LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_INF);
 
@@ -139,8 +140,12 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
 	while (1) {
 		LOG_DBG("Sensors thread tick");
+		/* power sensors and display */
+		led_set(LED_POWER, true);
 		get_hdc1010_val();
 		display_screen(SCREEN_SENSORS);
+		led_set(LED_POWER, false);
+		/* switch off sensors and display */
 		k_sleep(K_MINUTES(1));
 	}
 }

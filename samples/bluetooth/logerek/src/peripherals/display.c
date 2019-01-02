@@ -287,5 +287,5 @@ void display_screen_increment(void)
 {
 	screen_id = (screen_id + 1) % SCREEN_LAST;
 
-	//display_refresh();
+	display_refresh();
 }
