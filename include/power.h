@@ -162,25 +162,25 @@ extern void sys_pm_dump_debug_info(void);
 
 #ifdef CONFIG_PM_CONTROL_STATE_LOCK
 /**
- * @brief Disable system PM state
+ * @brief Disable particular power state
  *
- * Disable system Low power states like LPS or Deep Sleep states.
+ * Disabled state cannot be selected by the PM policy.
  */
-extern void sys_pm_ctrl_disable_state(int state);
+extern void sys_pm_ctrl_disable_state(enum power_states state);
 
 /**
- * @brief Enable system PM state
+ * @brief Enable particular power state
  *
- * Enable system Low power states like LPS or Deep Sleep states.
+ * Enabled state can be selected by the PM policy.
  */
-extern void sys_pm_ctrl_enable_state(int state);
+extern void sys_pm_ctrl_enable_state(enum power_states state);
 
 /**
- * @brief Get enable status of a PM state
+ * @brief Check if particular power state is enabled
  *
- * Get enable status of a system PM state.
+ * This function returns true if given power state is enabled.
  */
-extern bool sys_pm_ctrl_is_state_enabled(int state);
+extern bool sys_pm_ctrl_is_state_enabled(enum power_states state);
 
 #endif /* CONFIG_PM_CONTROL_STATE_LOCK */
 
