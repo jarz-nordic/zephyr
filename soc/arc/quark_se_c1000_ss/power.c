@@ -76,6 +76,7 @@ void sys_power_state_post_ops(enum power_states state)
 	case SYS_POWER_STATE_CPU_LPS:
 		__builtin_arc_seti(0);
 		break;
+#if (defined(CONFIG_SYS_POWER_DEEP_SLEEP))
 	case SYS_POWER_STATE_DEEP_SLEEP:
 		qm_ss_power_soc_lpss_disable();
 
@@ -99,6 +100,7 @@ void sys_power_state_post_ops(enum power_states state)
 		__builtin_arc_seti(0);
 		break;
 		break;
+#endif
 	default:
 		break;
 	}
