@@ -48,10 +48,10 @@ struct led_device_info {
 };
 
 static struct device_info dev_info[] = {
-	{ NULL, DT_HDC1008_NAME },	/* temp / hum */
-	{ NULL, DT_FXOS8700_NAME },	/* accelerometer */
-	{ NULL, DT_APDS9960_DRV_NAME },	/* RGB gesture */
-	{ NULL, DT_SSD1673_DEV_NAME },	/* epaper */
+	{ NULL, DT_HDC1008_NAME },	  /* temp / hum */
+	{ NULL, DT_NXP_FXOS8700_0_LABEL },/* accelerometer */
+	{ NULL, DT_APDS9960_DRV_NAME },	  /* RGB gesture */
+	{ NULL, DT_SSD1673_DEV_NAME },	  /* epaper */
 };
 
 static void timeout_handle(struct k_work *work)
@@ -201,5 +201,4 @@ int sensory_get_humidity(void)
 {
 	return humidity;
 }
-
 

@@ -42,6 +42,30 @@
 
 LOG_MODULE_REGISTER(app_bt, LOG_LEVEL_DBG);
 
+static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	printk("Passkey for %s: %06u\n", addr, passkey);
+}
+
+static void auth_cancel(struct bt_conn *conn)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	printk("Pairing cancelled: %s\n", addr);
+}
+
+static struct bt_conn_auth_cb auth_cb_display = {
+	.passkey_display = auth_passkey_display,
+	.passkey_entry = NULL,
+	.cancel = auth_cancel,
+};
+
 static ssize_t read_temperature(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
 				void *buf, u16_t len, u16_t offset);
@@ -75,7 +99,7 @@ static struct bt_gatt_attr logger_attrs[] = {
 	/* External temperature */
 	BT_GATT_CHARACTERISTIC(BT_UUID_HEAT_INDEX,
 			       BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,
-			       BT_GATT_PERM_WRITE,
+			       BT_GATT_PERM_WRITE_AUTHEN,
 			       NULL, write_temperature, NULL),
 	BT_GATT_CUD("Temperatura zadana", BT_GATT_PERM_READ),
 };
@@ -184,6 +208,7 @@ int app_bt_init(void)
 	}
 
 	bt_conn_cb_register(&conn_callbacks);
+	bt_conn_auth_cb_register(&auth_cb_display);
 
 	return 0;
 }

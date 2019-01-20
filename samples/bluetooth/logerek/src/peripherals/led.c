@@ -58,18 +58,6 @@ static void led_init_timeout(struct k_work *work)
 	for (i = 0; i < ARRAY_SIZE(leds); i++) {
 		gpio_pin_write(leds[i].dev, leds[i].pin, 1);
 	}
-
-	/* Stop after 5 iterations */
-	if (led_cntr >= (ARRAY_SIZE(leds) * 3)) {
-		led_cntr = 0;
-		return;
-	}
-
-	/* Select and enable current LED */
-	i = led_cntr++ % ARRAY_SIZE(leds);
-	gpio_pin_write(leds[i].dev, leds[i].pin, 0);
-
-	k_delayed_work_submit(&led_init_timer, K_MSEC(100));
 }
 
 int led_init(void)
@@ -86,7 +74,6 @@ int led_init(void)
 	}
 
 	k_delayed_work_init(&led_init_timer, led_init_timeout);
-	k_delayed_work_submit(&led_init_timer, K_MSEC(100));
 	return 0;
 }
 
@@ -96,12 +83,17 @@ int led_set(enum led_idx idx, bool status)
 		return -ENODEV;
 	}
 
-	u32_t value = status ? 1 : 0;
+	u32_t value = status ? 0 : 1;
 
 	gpio_pin_write(leds[idx].dev, leds[idx].pin, value);
-	LOG_DBG("LED[%d] status changed to: %s", idx, status ? "on" : "off");
+	LOG_DBG("LED[%d] status changed to: %s", idx, value ? "on" : "off");
 
 	return 0;
 }
 
+int led_set_time(enum led_idx idx, bool status, size_t time)
+{
+	led_set(idx, status);
+	k_delayed_work_submit(&led_init_timer, K_MSEC(time));
+}
 
