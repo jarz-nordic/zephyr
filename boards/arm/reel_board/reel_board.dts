@@ -48,6 +48,10 @@
 			gpios = <&gpio0 7 GPIO_PUD_PULL_UP>;
 			label = "User Button";
 		};
+		sens_supply: switch_0 {
+			gpios = <&gpio1 0 GPIO_PUD_PULL_UP>;
+			label = "Sensors supply switch";
+		};
 	};
 
 	aliases {
@@ -56,6 +60,7 @@
 		led2 = &green_led;
 		led3 = &blue_led;
 		sw0 = &user_button;
+		v_sens = &sens_supply;
 	};
 };
 
@@ -72,7 +77,7 @@
 };
 
 &uart0 {
-	compatible = "nordic,nrf-uart";
+	compatible = "nordic,nrf-uarte";
 	current-speed = <115200>;
 	status = "ok";
 	tx-pin = <6>;

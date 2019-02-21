@@ -18,7 +18,7 @@
 	"scheduled and it enters into various Low Power States.\n"\
 
 struct device *gpio_port;
-
+static struct device *power_pin;
 /* Application main Thread */
 void main(void)
 {
@@ -29,24 +29,11 @@ void main(void)
 
 	gpio_port = device_get_binding(PORT);
 
-	/* Configure Button 1 as deep sleep trigger event */
-	gpio_pin_configure(gpio_port, BUTTON_1, GPIO_DIR_IN
-						| GPIO_PUD_PULL_UP);
+	power_pin = device_get_binding(DT_GPIO_KEYS_V_SENS_GPIO_CONTROLLER);
 
-	/* Configure Button 2 as wake source from deep sleep */
-	gpio_pin_configure(gpio_port, BUTTON_2, GPIO_DIR_IN
-						| GPIO_PUD_PULL_UP
-						| GPIO_INT | GPIO_INT_LEVEL
-						| GPIO_CFG_SENSE_LOW);
-
-	gpio_pin_enable_callback(gpio_port, BUTTON_2);
-
-	/* Configure LEDs */
-	gpio_pin_configure(gpio_port, LED_1, GPIO_DIR_OUT);
-	gpio_pin_write(gpio_port, LED_1, LED_ON);
-
-	gpio_pin_configure(gpio_port, LED_2, GPIO_DIR_OUT);
-	gpio_pin_write(gpio_port, LED_2, LED_ON);
+	int ret = gpio_pin_configure(power_pin, DT_GPIO_KEYS_SWITCH_0_GPIO_PIN,
+				 (GPIO_DIR_OUT));
+	gpio_pin_write(power_pin, DT_GPIO_KEYS_SWITCH_0_GPIO_PIN, 1);
 
 	/*
 	 * Start the demo.
