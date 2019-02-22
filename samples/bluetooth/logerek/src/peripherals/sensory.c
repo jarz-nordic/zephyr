@@ -9,10 +9,12 @@
 #include <sensor.h>
 #include <misc/printk.h>
 #include <logging/log.h>
+#include <power.h>
 
 #include "sensory.h"
 #include "display.h"
 #include "led.h"
+#include <hal/nrf_gpio.h>
 
 LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_INF);
 
@@ -140,13 +142,15 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 	while (1) {
 		LOG_DBG("Sensors thread tick");
 		/* power sensors and display */
-		power_sensors(true);
-		get_hdc1010_val();
-		display_screen(SCREEN_SENSORS);
-		power_sensors(false);
-		/* switch off sensors and display */
-//		k_sleep(K_MINUTES(1));
+		//power_sensors(true);
 		k_sleep(K_SECONDS(5));
+//		get_hdc1010_val();
+//		display_screen(SCREEN_SENSORS);
+		power_sensors(false);
+		sys_pm_ctrl_enable_state(SYS_POWER_STATE_CPU_LPS_2);
+		/* switch off sensors and display */
+		k_sleep(K_SECONDS(5));
+		power_sensors(true);
 	}
 }
 
@@ -184,18 +188,51 @@ int sensory_init(void)
 				      NULL,
 				      K_LOWEST_APPLICATION_THREAD_PRIO,
 				      0,
-				      4000);
+				      2000);
 
 	k_thread_name_set(tid, thread_name);
 
 	return 0;
 }
 
+extern void __spim_uninit(void);
+extern void __spim_reinit(void);
+extern void __twim_uninit(void);
+extern void __twim_reinit(void);
+extern void __uarte_unint(void);
+
 static inline void power_sensors(bool state)
 {
-	u32_t val = state ? 0 : 1;
+	u32_t val = state ? 1 : 0;
 
 	gpio_pin_write(power_pin, DT_GPIO_KEYS_SWITCH_0_GPIO_PIN, val);
+
+	if (val) {
+		__twim_reinit();
+		__spim_reinit();
+		nrf_gpio_pin_write(15, 1);
+	} else {
+		__twim_uninit();
+		nrf_gpio_cfg_output(22);
+		nrf_gpio_cfg_output(23);
+		nrf_gpio_cfg_output(24);
+		nrf_gpio_cfg_output(25);
+		nrf_gpio_cfg_output(26);
+		nrf_gpio_cfg_output(27);
+		nrf_gpio_pin_write(26, 0);
+		nrf_gpio_pin_write(27, 0);
+		nrf_gpio_pin_write(23, 0);
+		nrf_gpio_pin_write(22, 0);
+		nrf_gpio_pin_write(24, 0);
+		nrf_gpio_pin_write(25, 0);
+		__uarte_unint();
+		__spim_uninit();
+		nrf_gpio_cfg_output(13);
+		nrf_gpio_pin_write(13, 0);
+		nrf_gpio_pin_write(15, 0);
+		nrf_gpio_pin_write(16, 0);
+		nrf_gpio_pin_write(17, 0);
+	}
 }
 
 int sensory_get_temperature(void)

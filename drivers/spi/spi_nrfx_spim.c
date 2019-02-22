@@ -280,6 +280,9 @@ static void event_handler(const nrfx_spim_evt_t *p_event, void *p_context)
 	}
 }
 
+static const nrfx_spim_config_t *config_cpy;
+static struct device *dev_cpy;
+
 static int init_spim(struct device *dev, const nrfx_spim_config_t *config)
 {
 	/* This sets only default values of frequency, mode and bit order.
@@ -295,9 +298,21 @@ static int init_spim(struct device *dev, const nrfx_spim_config_t *config)
 		return -EBUSY;
 	}
 
+	dev_cpy = dev;
+	config_cpy = config;
 	spi_context_unlock_unconditionally(&get_dev_data(dev)->ctx);
 
 	return 0;
+}
+
+void __spim_uninit(void)
+{
+	nrfx_spim_uninit(&get_dev_config(dev_cpy)->spim);
+}
+
+void __spim_reinit(void)
+{
+	init_spim(dev_cpy, config_cpy);
 }
 
 #if NRFX_CHECK(NRFX_SPIM_EXTENDED_ENABLED)

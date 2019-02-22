@@ -137,6 +137,10 @@ static const struct i2c_driver_api i2c_nrfx_twim_driver_api = {
 	.transfer  = i2c_nrfx_twim_transfer,
 };
 
+static struct device *dev_cpy;
+static const nrfx_twim_config_t *config_cpy;
+
+
 static int init_twim(struct device *dev, const nrfx_twim_config_t *config)
 {
 
@@ -148,7 +152,20 @@ static int init_twim(struct device *dev, const nrfx_twim_config_t *config)
 		return -EBUSY;
 	}
 
+	dev_cpy = dev;
+	config_cpy = config;
+
 	return 0;
+}
+
+void __twim_uninit(void)
+{
+	nrfx_twim_uninit(&get_dev_config(dev_cpy)->twim);
+}
+
+void __twim_reinit(void)
+{
+	init_twim(dev_cpy, config_cpy);
 }
 
 #define I2C_NRFX_TWIM_INVALID_FREQUENCY  ((nrf_twim_frequency_t)-1)
