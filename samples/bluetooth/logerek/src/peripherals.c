@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(app_peripherals, LOG_LEVEL_DBG);
 
 int peripherals_init(void)
 {
-	int err;
+	int err = 0;
 
 //	err = led_init();
 	if (err) {

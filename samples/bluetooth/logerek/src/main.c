@@ -24,13 +24,14 @@
 
 #include "peripherals.h"
 #include "app_bt.h"
-
+#include <hal/nrf_gpio.h>
 LOG_MODULE_REGISTER(app_main, LOG_LEVEL_DBG);
 
+extern void __uarte_unint(void);
 
 void main(void)
 {
-	int err;
+	int err = 0;
 
 	err = app_bt_init();
 	if (err) {
@@ -47,4 +48,5 @@ void main(void)
 
 		app_bt_process();
 	}
+
 }

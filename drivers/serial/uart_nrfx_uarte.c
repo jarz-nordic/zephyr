@@ -528,13 +528,17 @@ static int uarte_instance_init(struct device *dev,
 	NRF_UARTE_Type *uarte = get_uarte_instance(dev);
 	struct uarte_nrfx_data *data = get_dev_data(dev);
 
+
 	dev_cpy = dev;
 	config_cpy = config;
 
 	nrf_gpio_pin_write(config->pseltxd, 1);
 	nrf_gpio_cfg_output(config->pseltxd);
 
-	nrf_gpio_cfg_input(config->pselrxd, NRF_GPIO_PIN_NOPULL);
+	/* pull up enabled for my example using reel board. If board is powered
+	 * with battery pull up will prevent 2mA leakage
+	 */
+	nrf_gpio_cfg_input(config->pselrxd, NRF_GPIO_PIN_PULLUP);
 
 	nrf_uarte_txrx_pins_set(uarte,
 				config->pseltxd,
@@ -561,7 +565,6 @@ static int uarte_instance_init(struct device *dev,
 	nrf_uarte_enable(uarte);
 
 	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_ENDRX);
-
 	nrf_uarte_rx_buffer_set(uarte, &data->rx_data, 1);
 	nrf_uarte_task_trigger(uarte, NRF_UARTE_TASK_STARTRX);
 
@@ -587,15 +590,22 @@ void __uarte_unint(void)
 {
 	NRF_UARTE_Type *uarte = get_uarte_instance(dev_cpy);
 
+	nrf_uarte_task_trigger(uarte, NRF_UARTE_TASK_STOPRX);
+	nrf_uarte_task_trigger(uarte, NRF_UARTE_TASK_STOPTX);
+
+	/* Wait for transmitter to be ready */
+	while (!nrf_uarte_event_check(uarte, NRF_UARTE_EVENT_TXSTOPPED)) {
+	}
+	while (!nrf_uarte_event_check(uarte, NRF_UARTE_EVENT_RXTO)) {
+	}
+
 	nrf_uarte_disable(uarte);
 
-	nrf_gpio_cfg_default(6);
-	nrf_gpio_cfg_default(8);
-
-	nrf_gpio_cfg_output(6);
-	nrf_gpio_cfg_output(8);
-	nrf_gpio_pin_write(6, 1);
-	nrf_gpio_pin_write(8, 1);
+	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_TXSTOPPED);
+	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_RXTO);
+	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_ERROR);
+	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_RXDRDY);
+	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_ENDRX);
 }
 
 void __uarte_reinit(void)

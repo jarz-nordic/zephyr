@@ -20,6 +20,12 @@ LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_INF);
 
 #define SENSORY_STACK_SIZE	(2048U)
 
+extern void __spim_uninit(void);
+extern void __spim_reinit(void);
+extern void __twim_uninit(void);
+extern void __twim_reinit(void);
+extern void __uarte_unint(void);
+
 struct device_info {
 	struct device *dev;
 	char *name;
@@ -39,7 +45,6 @@ static struct device_info dev_info[] = {
 	{ NULL, DT_AVAGO_APDS9960_0_LABEL },
 	{ NULL, DT_SOLOMON_SSD1673FB_0_LABEL }
 };
-static struct device *power_pin;
 
 static K_THREAD_STACK_DEFINE(sensors_thread_stack, SENSORY_STACK_SIZE);
 static struct k_delayed_work temperature_external_timeout;
@@ -142,15 +147,13 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 	while (1) {
 		LOG_DBG("Sensors thread tick");
 		/* power sensors and display */
-		//power_sensors(true);
+		power_sensors(false);
 		k_sleep(K_SECONDS(5));
 //		get_hdc1010_val();
 //		display_screen(SCREEN_SENSORS);
-		power_sensors(false);
-		sys_pm_ctrl_enable_state(SYS_POWER_STATE_CPU_LPS_2);
+		power_sensors(true);
 		/* switch off sensors and display */
 		k_sleep(K_SECONDS(5));
-		power_sensors(true);
 	}
 }
 
@@ -159,7 +162,7 @@ int sensory_init(void)
 	int ret;
 
 	k_delayed_work_init(&temperature_external_timeout, timeout_handle);
-
+/*
 	for (u8_t i = 0; i < ARRAY_SIZE(dev_info); i++) {
 		dev_info[i].dev = device_get_binding(dev_info[i].name);
 		if (dev_info[i].dev == NULL) {
@@ -167,18 +170,9 @@ int sensory_init(void)
 			return -EBUSY;
 		}
 	}
-
-	power_pin = device_get_binding(DT_GPIO_KEYS_V_SENS_GPIO_CONTROLLER);
-
-	if (!power_pin) {
-		LOG_ERR("Failed to get %s device", DT_GPIO_KEYS_SWITCH_0_LABEL);
-	}
-	ret = gpio_pin_configure(power_pin, DT_GPIO_KEYS_SWITCH_0_GPIO_PIN,
-				 (GPIO_DIR_OUT));
-	if (ret) {
-		LOG_ERR("Error configuring power PIN");
-	}
-
+*/
+	nrf_gpio_cfg_output(32);
+	nrf_gpio_pin_write(32, 1);
 	k_tid_t tid = k_thread_create(&sensors_thread,
 				      stack,
 				      SENSORY_STACK_SIZE,
@@ -191,47 +185,41 @@ int sensory_init(void)
 				      2000);
 
 	k_thread_name_set(tid, thread_name);
-
-	return 0;
 }
 
-extern void __spim_uninit(void);
-extern void __spim_reinit(void);
-extern void __twim_uninit(void);
-extern void __twim_reinit(void);
-extern void __uarte_unint(void);
 
 static inline void power_sensors(bool state)
 {
 	u32_t val = state ? 1 : 0;
 
-	gpio_pin_write(power_pin, DT_GPIO_KEYS_SWITCH_0_GPIO_PIN, val);
+	nrf_gpio_pin_write(32, val);
 
 	if (val) {
-		__twim_reinit();
-		__spim_reinit();
-		nrf_gpio_pin_write(15, 1);
+//		__twim_reinit();
+//		__spim_reinit();
+//		nrf_gpio_pin_write(15, 1);
+		__uarte_reinit();
 	} else {
-		__twim_uninit();
-		nrf_gpio_cfg_output(22);
-		nrf_gpio_cfg_output(23);
-		nrf_gpio_cfg_output(24);
-		nrf_gpio_cfg_output(25);
-		nrf_gpio_cfg_output(26);
-		nrf_gpio_cfg_output(27);
-		nrf_gpio_pin_write(26, 0);
-		nrf_gpio_pin_write(27, 0);
-		nrf_gpio_pin_write(23, 0);
-		nrf_gpio_pin_write(22, 0);
-		nrf_gpio_pin_write(24, 0);
-		nrf_gpio_pin_write(25, 0);
+//		__twim_uninit();
+//		nrf_gpio_cfg_output(22);
+//		nrf_gpio_cfg_output(23);
+//		nrf_gpio_cfg_output(24);
+//		nrf_gpio_cfg_output(25);
+//		nrf_gpio_cfg_output(26);
+//		nrf_gpio_cfg_output(27);
+//		nrf_gpio_pin_write(26, 0);
+//		nrf_gpio_pin_write(27, 0);
+//		nrf_gpio_pin_write(23, 0);
+//		nrf_gpio_pin_write(22, 0);
+//		nrf_gpio_pin_write(24, 0);
+//		nrf_gpio_pin_write(25, 0);
 		__uarte_unint();
-		__spim_uninit();
-		nrf_gpio_cfg_output(13);
-		nrf_gpio_pin_write(13, 0);
-		nrf_gpio_pin_write(15, 0);
-		nrf_gpio_pin_write(16, 0);
-		nrf_gpio_pin_write(17, 0);
+//		__spim_uninit();
+//		nrf_gpio_cfg_output(13);
+//		nrf_gpio_pin_write(13, 0);
+//		nrf_gpio_pin_write(15, 0);
+//		nrf_gpio_pin_write(16, 0);
+//		nrf_gpio_pin_write(17, 0);
 	}
 }
 
