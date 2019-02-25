@@ -532,7 +532,7 @@ static int uarte_instance_init(struct device *dev,
 	dev_cpy = dev;
 	config_cpy = config;
 
-	nrf_gpio_pin_write(config->pseltxd, 1);
+	nrf_gpio_pin_write(config->pseltxd, 0);
 	nrf_gpio_cfg_output(config->pseltxd);
 
 	/* pull up enabled for my example using reel board. If board is powered

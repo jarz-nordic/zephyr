@@ -32,17 +32,17 @@ struct device_info {
 };
 
 enum periph_device {
-	DEV_IDX_HDC1010,
-	DEV_IDX_MMA8652,
-	DEV_IDX_APDS9960,
+//	DEV_IDX_HDC1010,
+//	DEV_IDX_MMA8652,
+//	DEV_IDX_APDS9960,
 	DEV_IDX_EPD,
 	DEV_IDX_NUMOF,
 };
 
 static struct device_info dev_info[] = {
-	{ NULL, DT_TI_HDC1010_0_LABEL },
-	{ NULL, DT_NXP_MMA8652FC_0_LABEL },
-	{ NULL, DT_AVAGO_APDS9960_0_LABEL },
+//	{ NULL, DT_TI_HDC1010_0_LABEL },
+//	{ NULL, DT_NXP_MMA8652FC_0_LABEL },
+//	{ NULL, DT_AVAGO_APDS9960_0_LABEL },
 	{ NULL, DT_SOLOMON_SSD1673FB_0_LABEL }
 };
 
@@ -63,7 +63,7 @@ static void timeout_handle(struct k_work *work)
 	temperature_external = INVALID_SENSOR_VALUE;
 }
 
-/* humidity & temperature */
+/* humidity & temperature *
 static int get_hdc1010_val(void)
 {
 	struct sensor_value sensor;
@@ -95,7 +95,7 @@ static int get_hdc1010_val(void)
 
 	return 0;
 }
-
+*/
 #if 0
 /* xyz accelerometer */
 static int get_mma8652_val(struct sensor_value *val)
@@ -147,11 +147,13 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 	while (1) {
 		LOG_DBG("Sensors thread tick");
 		/* power sensors and display */
-		power_sensors(false);
-		k_sleep(K_SECONDS(5));
-//		get_hdc1010_val();
-//		display_screen(SCREEN_SENSORS);
 		power_sensors(true);
+		k_sleep(K_MSEC(5));
+//		get_hdc1010_val();
+		//display_screen(SCREEN_SENSORS);
+		/* time needed to save data before power can be turned off */
+		k_sleep(K_MSEC(300));
+		power_sensors(false);
 		/* switch off sensors and display */
 		k_sleep(K_SECONDS(5));
 	}
@@ -162,7 +164,7 @@ int sensory_init(void)
 	int ret;
 
 	k_delayed_work_init(&temperature_external_timeout, timeout_handle);
-/*
+
 	for (u8_t i = 0; i < ARRAY_SIZE(dev_info); i++) {
 		dev_info[i].dev = device_get_binding(dev_info[i].name);
 		if (dev_info[i].dev == NULL) {
@@ -170,9 +172,14 @@ int sensory_init(void)
 			return -EBUSY;
 		}
 	}
-*/
+
 	nrf_gpio_cfg_output(32);
+	power_sensors(false);
+
+	return 0;
+
 	nrf_gpio_pin_write(32, 1);
+
 	k_tid_t tid = k_thread_create(&sensors_thread,
 				      stack,
 				      SENSORY_STACK_SIZE,
@@ -198,7 +205,7 @@ static inline void power_sensors(bool state)
 //		__twim_reinit();
 //		__spim_reinit();
 //		nrf_gpio_pin_write(15, 1);
-		__uarte_reinit();
+//		__uarte_reinit();
 	} else {
 //		__twim_uninit();
 //		nrf_gpio_cfg_output(22);
@@ -213,13 +220,22 @@ static inline void power_sensors(bool state)
 //		nrf_gpio_pin_write(22, 0);
 //		nrf_gpio_pin_write(24, 0);
 //		nrf_gpio_pin_write(25, 0);
+		__spim_uninit();
 		__uarte_unint();
-//		__spim_uninit();
-//		nrf_gpio_cfg_output(13);
-//		nrf_gpio_pin_write(13, 0);
-//		nrf_gpio_pin_write(15, 0);
-//		nrf_gpio_pin_write(16, 0);
-//		nrf_gpio_pin_write(17, 0);
+
+		nrf_gpio_cfg_output(14);
+		nrf_gpio_cfg_output(15);
+		nrf_gpio_cfg_output(16);
+		nrf_gpio_cfg_output(17);
+		nrf_gpio_cfg_output(19);
+		nrf_gpio_cfg_output(20);
+
+		nrf_gpio_pin_write(14, 0); // bussy
+		nrf_gpio_pin_write(15, 0); // reset
+		nrf_gpio_pin_write(16, 0); // dc
+		nrf_gpio_pin_write(17, 0); // CS
+		nrf_gpio_pin_write(19, 0); // CLK
+		nrf_gpio_pin_write(20, 0); // DIN
 	}
 }
 

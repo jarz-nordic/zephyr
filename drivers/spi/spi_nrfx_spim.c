@@ -307,6 +307,11 @@ static int init_spim(struct device *dev, const nrfx_spim_config_t *config)
 
 void __spim_uninit(void)
 {
+	// Ensure that SPI is not performing any transfer.
+        //nrf_spim_task_trigger(&get_dev_config(dev_cpy)->spim, NRF_SPIM_TASK_STOP);
+        //while (!nrf_spim_event_check(&get_dev_config(dev_cpy)->spim, NRF_SPIM_EVENT_STOPPED))
+        //{}
+
 	nrfx_spim_uninit(&get_dev_config(dev_cpy)->spim);
 }
 

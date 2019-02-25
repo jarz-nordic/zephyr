@@ -167,6 +167,9 @@ static void show_sensors_data(s32_t interval)
 	static s32_t old_tmp = INVALID_SENSOR_VALUE;
 	static s32_t old_hum = INVALID_SENSOR_VALUE;
 
+
+	static int i = 0;
+
 	s32_t external_tmp = sensory_get_temperature_external();
 	s32_t temperature = sensory_get_temperature();
 	s32_t humidity = sensory_get_humidity();
@@ -189,7 +192,7 @@ static void show_sensors_data(s32_t interval)
 				temperature / 10, abs(temperature % 10));
 	} else {
 		len = snprintf(str_buf, sizeof(str_buf),
-				"Dom : N/A C\n");
+				"Dom : N/A\n");
 	}
 
 	if (humidity != INVALID_SENSOR_VALUE) {
@@ -198,7 +201,7 @@ static void show_sensors_data(s32_t interval)
 				humidity);
 	} else {
 		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
-				"Dom : N/A %% H\n");
+				"Dom : N/A%d\n", i++);
 	}
 
 	if (old_external_tmp != INVALID_SENSOR_VALUE) {
@@ -211,7 +214,7 @@ static void show_sensors_data(s32_t interval)
 	} else {
 		len = snprintf(str_buf + len + len2,
 				sizeof(str_buf) - len - len2,
-				"Pole: N/A C");
+				"Pole: N/A");
 	}
 
 	display_big(str_buf, false, interval);
@@ -256,24 +259,32 @@ int display_init(void)
 		return -EIO;
 	}
 
-	k_delayed_work_init(&epd_work, epd_update);
+//	k_delayed_work_init(&epd_work, epd_update);
 
 	cfb_framebuffer_clear(epd_dev, true);
 
-	k_delayed_work_submit(&epd_work, K_NO_WAIT);
+//	k_delayed_work_submit(&epd_work, K_NO_WAIT);
 
 	return 0;
 }
 
 int display_screen(enum screen_ids id)
 {
-	if (id >= SCREEN_LAST) {
-		LOG_ERR("Requested screem does not exist");
+
+	switch (id) {
+	case SCREEN_BOOT:
+		show_boot_banner(K_SECONDS(5));
+		break;
+	case SCREEN_SENSORS:
+		show_sensors_data(K_FOREVER);
+		break;
+	case SCREEN_PYSZCZEK:
+		show_main();
+		break;
+	default:
+		LOG_ERR("fatal display error");
 		return -EINVAL;
 	}
-
-	screen_id = id;
-	display_refresh();
 
 	return 0;
 }
