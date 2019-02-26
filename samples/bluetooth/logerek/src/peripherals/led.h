@@ -37,7 +37,6 @@ enum led_idx {
 	LED2,
 	LED3,
 	LED4,
-	LED_POWER,
 	LED_MAX
 };
 

@@ -45,7 +45,6 @@
 
 LOG_MODULE_REGISTER(app_display, LOG_LEVEL_INF);
 
-static struct k_delayed_work epd_work;
 static u8_t screen_id = SCREEN_BOOT;
 static struct device *epd_dev;
 static char str_buf[280];
@@ -115,8 +114,7 @@ static size_t print_line(enum font_size font_size, int row, const char *text,
 	return len;
 }
 
-void board_show_text(enum font_size font, const char *text, bool center,
-		     s32_t duration)
+void board_show_text(enum font_size font, const char *text, bool center)
 {
 	int i;
 
@@ -141,34 +139,22 @@ void board_show_text(enum font_size font, const char *text, bool center,
 	}
 
 	cfb_framebuffer_finalize(epd_dev);
-
-	if (duration != K_FOREVER) {
-		k_delayed_work_submit(&epd_work, duration);
-	}
 }
 
-static inline void display_refresh(void)
+static void show_boot_banner(void)
 {
-	k_delayed_work_submit(&epd_work, K_NO_WAIT);
-}
-
-static void show_boot_banner(int time)
-{
-	snprintf(str_buf, sizeof(str_buf), "Booting Zephyr OS\n"
-		"Version: %s",
+	snprintf(str_buf, sizeof(str_buf), "Booting Zephyr\n"
+		"OS Version:\n%s",
 		 KERNEL_VERSION_STRING);
 
-	display_medium(str_buf, false, 2000);
+	display_medium(str_buf, false);
 }
 
-static void show_sensors_data(s32_t interval)
+static void show_sensors_data(void)
 {
 	static s32_t old_external_tmp = INVALID_SENSOR_VALUE;
 	static s32_t old_tmp = INVALID_SENSOR_VALUE;
 	static s32_t old_hum = INVALID_SENSOR_VALUE;
-
-
-	static int i = 0;
 
 	s32_t external_tmp = sensory_get_temperature_external();
 	s32_t temperature = sensory_get_temperature();
@@ -201,7 +187,7 @@ static void show_sensors_data(s32_t interval)
 				humidity);
 	} else {
 		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
-				"Dom : N/A%d\n", i++);
+				"Dom : N/A\n");
 	}
 
 	if (old_external_tmp != INVALID_SENSOR_VALUE) {
@@ -217,34 +203,13 @@ static void show_sensors_data(s32_t interval)
 				"Pole: N/A");
 	}
 
-	display_big(str_buf, false, interval);
+	display_big(str_buf, false);
 }
 
 static void show_main(void)
 {
 
 }
-
-static void epd_update(struct k_work *work)
-{
-	switch (screen_id) {
-	case SCREEN_BOOT:
-		show_boot_banner(K_SECONDS(5));
-		break;
-	case SCREEN_SENSORS:
-		show_sensors_data(K_FOREVER);
-		break;
-	case SCREEN_PYSZCZEK:
-		show_main();
-		break;
-	default:
-		LOG_ERR("fatal display error");
-		return;
-	}
-
-	screen_id = SCREEN_SENSORS;
-}
-
 
 int display_init(void)
 {
@@ -259,24 +224,19 @@ int display_init(void)
 		return -EIO;
 	}
 
-//	k_delayed_work_init(&epd_work, epd_update);
-
 	cfb_framebuffer_clear(epd_dev, true);
-
-//	k_delayed_work_submit(&epd_work, K_NO_WAIT);
 
 	return 0;
 }
 
 int display_screen(enum screen_ids id)
 {
-
 	switch (id) {
 	case SCREEN_BOOT:
-		show_boot_banner(K_SECONDS(5));
+		show_boot_banner();
 		break;
 	case SCREEN_SENSORS:
-		show_sensors_data(K_FOREVER);
+		show_sensors_data();
 		break;
 	case SCREEN_PYSZCZEK:
 		show_main();
@@ -286,17 +246,11 @@ int display_screen(enum screen_ids id)
 		return -EINVAL;
 	}
 
+	k_sleep(K_MSEC(300));
 	return 0;
 }
 
 enum screen_ids display_screen_get(void)
 {
 	return screen_id;
-}
-
-void display_screen_increment(void)
-{
-	screen_id = (screen_id + 1) % SCREEN_LAST;
-
-	display_refresh();
 }

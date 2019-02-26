@@ -21,10 +21,11 @@ LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_INF);
 #define SENSORY_STACK_SIZE	(2048U)
 
 extern void __spim_uninit(void);
-extern void __spim_reinit(void);
+extern int __spim_reinit(void);
 extern void __twim_uninit(void);
 extern void __twim_reinit(void);
 extern void __uarte_unint(void);
+extern void __uarte_reinit(void);
 
 struct device_info {
 	struct device *dev;
@@ -140,19 +141,28 @@ static int get_apds9960_val(struct sensor_value *val)
 }
 #endif
 
-
+extern void __ssd1673_reinit(void);
 
 static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
+	nrf_gpio_cfg_output(32);
+	display_screen(SCREEN_BOOT);
+	power_sensors(false);
+	k_sleep(K_SECONDS(1));
+	power_sensors(true);
+	display_screen(SCREEN_SENSORS);
+	k_sleep(K_SECONDS(1));
+	power_sensors(false);
+
+	return;
+
 	while (1) {
-		LOG_DBG("Sensors thread tick");
 		/* power sensors and display */
 		power_sensors(true);
-		k_sleep(K_MSEC(5));
+
+		LOG_DBG("Sensors thread tick");
 //		get_hdc1010_val();
-		//display_screen(SCREEN_SENSORS);
-		/* time needed to save data before power can be turned off */
-		k_sleep(K_MSEC(300));
+		display_screen(SCREEN_SENSORS);
 		power_sensors(false);
 		/* switch off sensors and display */
 		k_sleep(K_SECONDS(5));
@@ -161,8 +171,6 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 
 int sensory_init(void)
 {
-	int ret;
-
 	k_delayed_work_init(&temperature_external_timeout, timeout_handle);
 
 	for (u8_t i = 0; i < ARRAY_SIZE(dev_info); i++) {
@@ -173,13 +181,6 @@ int sensory_init(void)
 		}
 	}
 
-	nrf_gpio_cfg_output(32);
-	power_sensors(false);
-
-	return 0;
-
-	nrf_gpio_pin_write(32, 1);
-
 	k_tid_t tid = k_thread_create(&sensors_thread,
 				      stack,
 				      SENSORY_STACK_SIZE,
@@ -189,53 +190,76 @@ int sensory_init(void)
 				      NULL,
 				      K_LOWEST_APPLICATION_THREAD_PRIO,
 				      0,
-				      2000);
+				      500);
 
 	k_thread_name_set(tid, thread_name);
+	return 0;
 }
 
+static inline void power_spim(bool status)
+{
+	if (status) {
+		__spim_reinit();
+		__ssd1673_reinit();
+	} else {
+		nrf_gpio_pin_write(15, 0); // reset
+		nrf_gpio_pin_write(16, 0); // dc
+		nrf_gpio_pin_write(17, 0); // cs
+		nrf_gpio_pin_write(20, 0); // MOSI
+		__spim_uninit();
+		nrf_gpio_pin_write(15, 0); // reset
+		nrf_gpio_pin_write(16, 0); // dc
+		nrf_gpio_pin_write(17, 0); // cs
+		nrf_gpio_pin_write(20, 0); // MOSI
+	}
+}
+
+static inline void power_uarte(bool status)
+{
+	if (status) {
+		__uarte_reinit();
+	} else {
+		__uarte_unint();
+	}
+}
+
+static inline void power_i2c(bool status)
+{
+	/*
+	if (status) {
+		__twim_reinit();
+	} else {
+		__twim_uninit();
+		nrf_gpio_cfg_output(22);
+		nrf_gpio_cfg_output(23);
+		nrf_gpio_cfg_output(24);
+		nrf_gpio_cfg_output(25);
+		nrf_gpio_cfg_output(26);
+		nrf_gpio_cfg_output(27);
+		nrf_gpio_pin_write(26, 0);
+		nrf_gpio_pin_write(27, 0);
+		nrf_gpio_pin_write(23, 0);
+		nrf_gpio_pin_write(22, 0);
+		nrf_gpio_pin_write(24, 0);
+		nrf_gpio_pin_write(25, 0);
+	}
+	*/
+}
 
 static inline void power_sensors(bool state)
 {
-	u32_t val = state ? 1 : 0;
-
-	nrf_gpio_pin_write(32, val);
-
-	if (val) {
-//		__twim_reinit();
-//		__spim_reinit();
-//		nrf_gpio_pin_write(15, 1);
-//		__uarte_reinit();
+	/* switch on/off power supply */
+	if (state == false) {
+		power_spim(0);
+		power_i2c(0);
+		power_uarte(0);
+		nrf_gpio_pin_write(32, 0);
 	} else {
-//		__twim_uninit();
-//		nrf_gpio_cfg_output(22);
-//		nrf_gpio_cfg_output(23);
-//		nrf_gpio_cfg_output(24);
-//		nrf_gpio_cfg_output(25);
-//		nrf_gpio_cfg_output(26);
-//		nrf_gpio_cfg_output(27);
-//		nrf_gpio_pin_write(26, 0);
-//		nrf_gpio_pin_write(27, 0);
-//		nrf_gpio_pin_write(23, 0);
-//		nrf_gpio_pin_write(22, 0);
-//		nrf_gpio_pin_write(24, 0);
-//		nrf_gpio_pin_write(25, 0);
-		__spim_uninit();
-		__uarte_unint();
-
-		nrf_gpio_cfg_output(14);
-		nrf_gpio_cfg_output(15);
-		nrf_gpio_cfg_output(16);
-		nrf_gpio_cfg_output(17);
-		nrf_gpio_cfg_output(19);
-		nrf_gpio_cfg_output(20);
-
-		nrf_gpio_pin_write(14, 0); // bussy
-		nrf_gpio_pin_write(15, 0); // reset
-		nrf_gpio_pin_write(16, 0); // dc
-		nrf_gpio_pin_write(17, 0); // CS
-		nrf_gpio_pin_write(19, 0); // CLK
-		nrf_gpio_pin_write(20, 0); // DIN
+		power_i2c(1);
+		power_uarte(1);
+		nrf_gpio_pin_write(32, 1);
+		k_busy_wait(K_MSEC(2));
+		power_spim(1);
 	}
 }
 

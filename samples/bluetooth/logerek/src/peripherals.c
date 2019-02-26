@@ -41,7 +41,7 @@ int peripherals_init(void)
 {
 	int err = 0;
 
-//	err = led_init();
+	err = led_init();
 	if (err) {
 		LOG_ERR("LED initialization failed: err %d", err);
 		return err;
@@ -53,7 +53,7 @@ int peripherals_init(void)
 		return err;
 	}
 
-//	err = display_init();
+	err = display_init();
 	if (err) {
 		LOG_ERR("Display initialization failed: err %d", err);
 		return err;

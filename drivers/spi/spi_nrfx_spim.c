@@ -280,8 +280,10 @@ static void event_handler(const nrfx_spim_evt_t *p_event, void *p_context)
 	}
 }
 
-static const nrfx_spim_config_t *config_cpy;
-static struct device *dev_cpy;
+static nrfx_spim_config_t config_cpy;
+static struct device dev_cpy;
+static nrfx_spim_t spim_cpy;
+
 
 static int init_spim(struct device *dev, const nrfx_spim_config_t *config)
 {
@@ -298,8 +300,10 @@ static int init_spim(struct device *dev, const nrfx_spim_config_t *config)
 		return -EBUSY;
 	}
 
-	dev_cpy = dev;
-	config_cpy = config;
+	memcpy(&config_cpy, config, sizeof (config_cpy));
+	memcpy(&dev_cpy, dev, sizeof(struct device));
+	memcpy(&spim_cpy, &get_dev_config(dev)->spim, sizeof(nrfx_spim_t));
+
 	spi_context_unlock_unconditionally(&get_dev_data(dev)->ctx);
 
 	return 0;
@@ -307,17 +311,31 @@ static int init_spim(struct device *dev, const nrfx_spim_config_t *config)
 
 void __spim_uninit(void)
 {
-	// Ensure that SPI is not performing any transfer.
-        //nrf_spim_task_trigger(&get_dev_config(dev_cpy)->spim, NRF_SPIM_TASK_STOP);
-        //while (!nrf_spim_event_check(&get_dev_config(dev_cpy)->spim, NRF_SPIM_EVENT_STOPPED))
-        //{}
+	nrfx_spim_uninit(&spim_cpy);
+	/*
+	nrfx_spim_t const * const p_instance = &get_dev_config(dev_cpy)->spim;
+	NRF_SPIM_Type * p_spim = (NRF_SPIM_Type *)p_instance->p_reg;
 
-	nrfx_spim_uninit(&get_dev_config(dev_cpy)->spim);
+	nrf_spim_task_trigger(p_spim, NRF_SPIM_TASK_STOP);
+        while (!nrf_spim_event_check(p_spim, NRF_SPIM_EVENT_STOPPED))
+        {}
+	nrf_spim_disable(p_spim);
+	*(volatile uint32_t *)0x4002F004 = 1;
+	*/
 }
 
-void __spim_reinit(void)
+int __spim_reinit(void)
 {
-	init_spim(dev_cpy, config_cpy);
+int j;
+	volatile int i = nrfx_spim_init(&spim_cpy, &config_cpy, event_handler, &dev_cpy);
+	j = i + 1;
+	/*
+	nrfx_spim_t const * const p_instance = &get_dev_config(dev_cpy)->spim;
+	NRF_SPIM_Type * p_spim = (NRF_SPIM_Type *)p_instance->p_reg;
+
+	nrf_spim_enable(p_spim);
+	*/
+	return j;
 }
 
 #if NRFX_CHECK(NRFX_SPIM_EXTENDED_ENABLED)

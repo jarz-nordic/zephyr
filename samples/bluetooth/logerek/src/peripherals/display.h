@@ -45,20 +45,19 @@ enum font_size {
 };
 
 /* Function initializing display */
-void board_show_text(enum font_size font, const char *text, bool center,
-		     s32_t duration);
+void board_show_text(enum font_size font, const char *text, bool center);
 int display_init(void);
 int display_screen(enum screen_ids id);
 enum screen_ids display_screen_get(void);
 void display_screen_increment(void);
 
-#define display_small(text, center, time)	\
-	board_show_text(FONT_SMALL, text, center, time)
+#define display_small(text, center)	\
+	board_show_text(FONT_SMALL, text, center)
 
-#define display_medium(text, center, time)	\
-	board_show_text(FONT_MEDIUM, text, center, time)
+#define display_medium(text, center)	\
+	board_show_text(FONT_MEDIUM, text, center)
 
-#define display_big(text, center, time)		\
-	board_show_text(FONT_BIG, text, center, time)
+#define display_big(text, center)	\
+	board_show_text(FONT_BIG, text, center)
 
 #endif /* DISPLAY_H__ */

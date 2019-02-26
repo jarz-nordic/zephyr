@@ -416,6 +416,13 @@ static int ssd1673_set_pixel_format(const struct device *dev,
 	return -ENOTSUP;
 }
 
+static int ssd1673_clear_and_write_buffer(struct device *dev);
+static struct device *dev_cpy;
+void __disp_reinit(void)
+{
+	ssd1673_clear_and_write_buffer(dev_cpy);
+}
+
 static int ssd1673_clear_and_write_buffer(struct device *dev)
 {
 	int err;
@@ -425,6 +432,8 @@ static int ssd1673_clear_and_write_buffer(struct device *dev)
 	struct spi_buf_set buf_set = {.buffers = &sbuf, .count = 1};
 	struct ssd1673_data *driver = dev->driver_data;
 	u8_t tmp;
+
+dev_cpy = dev;
 
 	tmp = SSD1673_DATA_ENTRY_XIYDY;
 	err = ssd1673_write_cmd(driver, SSD1673_CMD_ENTRY_MODE, &tmp, 1);
@@ -575,10 +584,15 @@ static int ssd1673_controller_init(struct device *dev)
 
 	return ssd1673_clear_and_write_buffer(dev);
 }
-
+static int ssd1673_init(struct device *dev);
+void __ssd1673_reinit(void)
+{
+	ssd1673_init(dev_cpy);
+}
 static int ssd1673_init(struct device *dev)
 {
 	struct ssd1673_data *driver = dev->driver_data;
+	dev_cpy=dev;
 
 	LOG_DBG("");
 

@@ -50,11 +50,8 @@ struct led_device_info {
 
 static void led_init_timeout(struct k_work *work)
 {
-	static int led_cntr;
-	int i;
-
 	/* Disable all LEDs */
-	for (i = 0; i < ARRAY_SIZE(leds); i++) {
+	for (u8_t i = 0; i < ARRAY_SIZE(leds); i++) {
 		gpio_pin_write(leds[i].dev, leds[i].pin, 1);
 	}
 }
@@ -92,7 +89,12 @@ int led_set(enum led_idx idx, bool status)
 
 int led_set_time(enum led_idx idx, bool status, size_t time)
 {
-	led_set(idx, status);
-	k_delayed_work_submit(&led_init_timer, K_MSEC(time));
+	int ret = led_set(idx, status);
+
+	if (ret == 0) {
+		k_delayed_work_submit(&led_init_timer, K_MSEC(time));
+	}
+
+	return ret;
 }
 
