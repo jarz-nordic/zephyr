@@ -43,6 +43,6 @@ enum led_idx {
 int led_init(void);
 
 int led_set(enum led_idx idx, bool status);
+int led_set_time(enum led_idx idx, size_t ms);
 
 #endif /* LED_H__ */
-

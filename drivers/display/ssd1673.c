@@ -15,6 +15,7 @@ LOG_MODULE_REGISTER(ssd1673);
 #include <gpio.h>
 #include <spi.h>
 #include <misc/byteorder.h>
+#include <string.h>
 
 #include "ssd1673_regs.h"
 #include <display/cfb.h>
@@ -417,7 +418,7 @@ static int ssd1673_set_pixel_format(const struct device *dev,
 }
 
 static int ssd1673_clear_and_write_buffer(struct device *dev);
-static struct device *dev_cpy;
+static struct device dev_cpy;
 
 static int ssd1673_clear_and_write_buffer(struct device *dev)
 {
@@ -428,8 +429,6 @@ static int ssd1673_clear_and_write_buffer(struct device *dev)
 	struct spi_buf_set buf_set = {.buffers = &sbuf, .count = 1};
 	struct ssd1673_data *driver = dev->driver_data;
 	u8_t tmp;
-
-dev_cpy = dev;
 
 	tmp = SSD1673_DATA_ENTRY_XIYDY;
 	err = ssd1673_write_cmd(driver, SSD1673_CMD_ENTRY_MODE, &tmp, 1);
@@ -583,12 +582,13 @@ static int ssd1673_controller_init(struct device *dev)
 static int ssd1673_init(struct device *dev);
 void __ssd1673_reinit(void)
 {
-	ssd1673_init(dev_cpy);
+	ssd1673_init(&dev_cpy);
 }
 static int ssd1673_init(struct device *dev)
 {
 	struct ssd1673_data *driver = dev->driver_data;
-	dev_cpy=dev;
+
+	memcpy(&dev_cpy, dev, sizeof(dev_cpy));
 
 	LOG_DBG("");
 

@@ -96,10 +96,14 @@ static struct bt_gatt_attr logger_attrs[] = {
 			       read_humidity, NULL, NULL),
 	BT_GATT_CUD("Wilgotność", BT_GATT_PERM_READ),
 
-	/* External temperature */
+	/* External temperature *
 	BT_GATT_CHARACTERISTIC(BT_UUID_HEAT_INDEX,
 			       BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,
 			       BT_GATT_PERM_WRITE_AUTHEN,
+			       NULL, write_temperature, NULL),*/
+	BT_GATT_CHARACTERISTIC(BT_UUID_HEAT_INDEX,
+			       BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,
+			       BT_GATT_PERM_WRITE,
 			       NULL, write_temperature, NULL),
 	BT_GATT_CUD("Temperatura zadana", BT_GATT_PERM_READ),
 };

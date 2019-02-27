@@ -87,12 +87,12 @@ int led_set(enum led_idx idx, bool status)
 	return 0;
 }
 
-int led_set_time(enum led_idx idx, bool status, size_t time)
+int led_set_time(enum led_idx idx, size_t ms)
 {
-	int ret = led_set(idx, status);
+	int ret = led_set(idx, true);
 
 	if (ret == 0) {
-		k_delayed_work_submit(&led_init_timer, K_MSEC(time));
+		k_delayed_work_submit(&led_init_timer, K_MSEC(ms));
 	}
 
 	return ret;

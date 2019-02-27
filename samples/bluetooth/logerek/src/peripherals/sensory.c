@@ -158,6 +158,7 @@ static inline void power_i2c(bool status)
 {
 	if (status) {
 		__twim_reinit();
+		k_sleep(K_MSEC(2));
 		__hdc_1008_reinit();
 	} else {
 		__twim_uninit();
@@ -183,7 +184,6 @@ static inline void power_sensors(bool state)
 	} else {
 		nrf_gpio_pin_write(32, 1);
 		power_uarte(1);
-		k_busy_wait(K_MSEC(2));
 		power_i2c(1);
 		power_spim(1);
 	}
@@ -202,6 +202,7 @@ int sensory_get_temperature_external(void)
 void sensory_set_temperature_external(s16_t tmp)
 {
 	if ((tmp >= -500) && (tmp <= 1250)) {
+		led_set_time(LED4, 40);
 		temperature_external = tmp;
 		k_delayed_work_submit(&temperature_external_timeout,
 				      K_SECONDS(90));
@@ -216,19 +217,19 @@ int sensory_get_humidity(void)
 static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 {
 	nrf_gpio_cfg_output(32);
-//__twim_uninit();
-//__twim_reinit();
+	display_screen(SCREEN_BOOT);
+	k_sleep(K_SECONDS(3));
+
 	while (1) {
 		/* power sensors and display */
 		LOG_DBG("Sensors thread tick");
 		get_hdc1010_val();
 		display_screen(SCREEN_SENSORS);
-		k_sleep(K_SECONDS(2));
+		k_sleep(K_MSEC(35));
 		power_sensors(false);
+
 		/* switch off sensors and display */
-		k_sleep(K_SECONDS(2));
+		k_sleep(K_SECONDS(60));
 		power_sensors(true);
 	}
 }
-
-

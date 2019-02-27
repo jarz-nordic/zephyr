@@ -12,6 +12,7 @@
 #include <misc/util.h>
 #include <misc/__assert.h>
 #include <logging/log.h>
+#include <string.h>
 
 #include "hdc1008.h"
 
@@ -106,18 +107,18 @@ static u16_t read16(struct device *dev, u8_t a, u8_t d)
 	return (buf[0] << 8 | buf[1]);
 }
 
-struct device *dev_cpy;
+static struct device dev_cpy;
 static int hdc1008_init(struct device *dev);
 void __hdc_1008_reinit(void)
 {
-	hdc1008_init(dev_cpy);
+	hdc1008_init(&dev_cpy);
 }
 
 static int hdc1008_init(struct device *dev)
 {
 	struct hdc1008_data *drv_data = dev->driver_data;
 
-	dev_cpy = dev;
+	memcpy(&dev_cpy, dev, sizeof(dev_cpy));
 
 	drv_data->i2c = device_get_binding(DT_TI_HDC1008_0_BUS_NAME);
 

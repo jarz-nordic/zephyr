@@ -174,11 +174,11 @@ static void show_sensors_data(void)
 
 	if (temperature != INVALID_SENSOR_VALUE) {
 		len = snprintf(str_buf, sizeof(str_buf),
-				"Dom : %d.%dC\n",
+				"Dom : %3d.%1dC\n",
 				temperature / 10, abs(temperature % 10));
 	} else {
 		len = snprintf(str_buf, sizeof(str_buf),
-				"Dom : N/A\n");
+				"Dom :    N/A\n");
 	}
 
 	if (humidity != INVALID_SENSOR_VALUE) {
@@ -187,20 +187,20 @@ static void show_sensors_data(void)
 				humidity);
 	} else {
 		len2 = snprintf(str_buf + len, sizeof(str_buf) - len,
-				"Dom : N/A\n");
+				"Dom :    N/A\n");
 	}
 
 	if (old_external_tmp != INVALID_SENSOR_VALUE) {
 		len = snprintf(str_buf + len + len2,
 				sizeof(str_buf) - len - len2,
-				"Pole:%c%d.%dC\n",
-				external_tmp > 0 ? ' ' : '-',
+				"Pole:%c%3d.%1dC\n",
+				external_tmp >= 0 ? ' ' : '-',
 				abs(external_tmp / 10),
 				abs(external_tmp % 10));
 	} else {
 		len = snprintf(str_buf + len + len2,
 				sizeof(str_buf) - len - len2,
-				"Pole: N/A");
+				"Pole:    N/A");
 	}
 
 	display_big(str_buf, false);
