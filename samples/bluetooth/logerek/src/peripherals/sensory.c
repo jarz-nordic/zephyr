@@ -56,7 +56,57 @@ static k_thread_stack_t *stack = sensors_thread_stack;
 static const char *thread_name = "sensory";
 struct k_thread sensors_thread;
 
-static s32_t temperature_external = INVALID_SENSOR_VALUE;
+#define TEMP_AVERAGE_SAMPLES 3
+typedef struct {
+	s32_t sample[TEMP_AVERAGE_SAMPLES];
+	u8_t idx;
+	bool valid;
+} ext_temp_t;
+
+static ext_temp_t ext_temperature;
+
+static s32_t ext_temp_get(ext_temp_t *temp)
+{
+	s32_t average = 0;
+	s32_t cmp;
+
+	if ((temp->idx == 0) && (temp->valid == false)) {
+		return INVALID_SENSOR_VALUE;
+	} else if (temp->valid) {
+		cmp = TEMP_AVERAGE_SAMPLES;
+	} else {
+		cmp = temp->idx;
+	}
+
+	for (u8_t i = 0; i < cmp; i++) {
+		average += temp->sample[i];
+	}
+
+	return average / cmp;
+}
+
+static inline void ext_temp_reset(ext_temp_t *temp)
+{
+	temp->idx = 0;
+	temp->valid = false;
+}
+
+static bool ext_temp_add(ext_temp_t *temp, s32_t val)
+{
+	if (!((val >= -500) && (val <= 1250))) {
+		ext_temp_reset(temp);
+		return false;
+	}
+
+	temp->sample[temp->idx++] = val;
+	if (temp->idx >= TEMP_AVERAGE_SAMPLES) {
+		temp->idx = 0;
+		temp->valid = true;
+	}
+
+	return true;
+}
+
 static s32_t temperature = INVALID_SENSOR_VALUE;
 static s32_t humidity = INVALID_SENSOR_VALUE;
 
@@ -64,7 +114,7 @@ static inline void power_sensors(bool state);
 
 static void timeout_handle(struct k_work *work)
 {
-	temperature_external = INVALID_SENSOR_VALUE;
+	ext_temp_reset(&ext_temperature);
 }
 
 /* humidity & temperature */
@@ -196,14 +246,13 @@ int sensory_get_temperature(void)
 
 int sensory_get_temperature_external(void)
 {
-	return temperature_external;
+	return ext_temp_get(&ext_temperature);
 }
 
 void sensory_set_temperature_external(s16_t tmp)
 {
-	if ((tmp >= -500) && (tmp <= 1250)) {
-		led_set_time(LED4, 40);
-		temperature_external = tmp;
+	if (ext_temp_add(&ext_temperature, tmp)) {
+		led_set_time(LED4, 25);
 		k_delayed_work_submit(&temperature_external_timeout,
 				      K_SECONDS(90));
 	}
@@ -223,13 +272,15 @@ static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
 	while (1) {
 		/* power sensors and display */
 		LOG_DBG("Sensors thread tick");
-		get_hdc1010_val();
+		if (get_hdc1010_val() != 0) {
+			get_hdc1010_val();
+		}
 		display_screen(SCREEN_SENSORS);
-		k_sleep(K_MSEC(35));
+		k_sleep(K_MSEC(3000));
 		power_sensors(false);
-
 		/* switch off sensors and display */
-		k_sleep(K_SECONDS(60));
+//		k_sleep(K_SECONDS(120));
+		k_sleep(K_SECONDS(3));
 		power_sensors(true);
 	}
 }

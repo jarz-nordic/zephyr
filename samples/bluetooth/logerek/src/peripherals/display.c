@@ -246,7 +246,6 @@ int display_screen(enum screen_ids id)
 		return -EINVAL;
 	}
 
-	k_sleep(K_MSEC(300));
 	return 0;
 }
 
