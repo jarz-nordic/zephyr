@@ -161,7 +161,6 @@ static inline void power_i2c(bool status)
 		__hdc_1008_reinit();
 	} else {
 		__twim_uninit();
-		return;
 		nrf_gpio_cfg_output(27);
 		nrf_gpio_cfg_output(26);
 		nrf_gpio_pin_write(26, 0);

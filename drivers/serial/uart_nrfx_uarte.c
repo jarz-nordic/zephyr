@@ -12,6 +12,7 @@
 #include <hal/nrf_gpio.h>
 #include <hal/nrf_uarte.h>
 #include <nrfx_uarte.h>
+#include <string.h>
 
 #if (defined(CONFIG_UART_0_NRF_UARTE) &&         \
      defined(CONFIG_UART_0_INTERRUPT_DRIVEN)) || \
@@ -517,8 +518,8 @@ static const struct uart_driver_api uart_nrfx_uarte_driver_api = {
 #endif /* UARTE_INTERRUPT_DRIVEN */
 };
 
-static struct device *dev_cpy;
-static const struct uarte_init_config *config_cpy;
+static struct device dev_cpy;
+static struct uarte_init_config config_cpy;
 
 static int uarte_instance_init(struct device *dev,
 			       const struct uarte_init_config *config,
@@ -528,9 +529,8 @@ static int uarte_instance_init(struct device *dev,
 	NRF_UARTE_Type *uarte = get_uarte_instance(dev);
 	struct uarte_nrfx_data *data = get_dev_data(dev);
 
-
-	dev_cpy = dev;
-	config_cpy = config;
+	memcpy(&dev_cpy, dev, sizeof(dev_cpy));
+	memcpy(&config_cpy, config, sizeof(config_cpy));
 
 	nrf_gpio_pin_write(config->pseltxd, 0);
 	nrf_gpio_cfg_output(config->pseltxd);
@@ -588,7 +588,7 @@ static int uarte_instance_init(struct device *dev,
 
 void __uarte_unint(void)
 {
-	NRF_UARTE_Type *uarte = get_uarte_instance(dev_cpy);
+	NRF_UARTE_Type *uarte = get_uarte_instance(&dev_cpy);
 
 	nrf_uarte_task_trigger(uarte, NRF_UARTE_TASK_STOPRX);
 	nrf_uarte_task_trigger(uarte, NRF_UARTE_TASK_STOPTX);
@@ -609,7 +609,7 @@ void __uarte_unint(void)
 
 void __uarte_reinit(void)
 {
-	uarte_instance_init(dev_cpy, config_cpy, 0);
+	uarte_instance_init(&dev_cpy, &config_cpy, 0);
 }
 
 #define UART_NRF_UARTE_DEVICE(idx)					       \
