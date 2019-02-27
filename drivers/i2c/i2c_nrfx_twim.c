@@ -13,6 +13,8 @@
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 #include <logging/log.h>
 LOG_MODULE_REGISTER(i2c_nrfx_twim);
+static void semaphores_init(void);
+static void semaphores_reinit(void);
 
 struct i2c_nrfx_twim_data {
 	struct k_sem transfer_sync;
@@ -70,8 +72,9 @@ static int i2c_nrfx_twim_transfer(struct device *dev, struct i2c_msg *msgs,
 				break;
 			}
 		}
+volatile struct k_sem *str = &(get_dev_data(dev)->completion_sync);
 
-		k_sem_take(&(get_dev_data(dev)->completion_sync), K_FOREVER);
+		k_sem_take(str, K_FOREVER);
 		res = get_dev_data(dev)->res;
 		if (res != NRFX_SUCCESS) {
 			LOG_ERR("Error %d occurred for message %d", res, i);
@@ -143,6 +146,8 @@ static const nrfx_twim_config_t *config_cpy;
 
 static int init_twim(struct device *dev, const nrfx_twim_config_t *config)
 {
+//	semaphores_init();
+static bool powtorz = false;
 
 	nrfx_err_t result = nrfx_twim_init(&get_dev_config(dev)->twim, config,
 					   event_handler, dev);
@@ -155,6 +160,11 @@ static int init_twim(struct device *dev, const nrfx_twim_config_t *config)
 	dev_cpy = dev;
 	config_cpy = config;
 
+if (powtorz == false) {
+	powtorz = true;
+	nrfx_twim_uninit(&get_dev_config(dev)->twim);
+	init_twim(dev, config);
+}
 	return 0;
 }
 
@@ -165,6 +175,7 @@ void __twim_uninit(void)
 
 void __twim_reinit(void)
 {
+//	semaphores_reinit();
 	init_twim(dev_cpy, config_cpy);
 }
 
@@ -200,6 +211,7 @@ void __twim_reinit(void)
 		.completion_sync = _K_SEM_INITIALIZER(                         \
 			twim_##idx##_data.completion_sync, 0, 1)               \
 	};								       \
+	static struct i2c_nrfx_twim_data data_cpy;	       		       \
 	static const struct i2c_nrfx_twim_config twim_##idx##_config = {       \
 		.twim = NRFX_TWIM_INSTANCE(idx)				       \
 	};								       \
@@ -214,6 +226,15 @@ void __twim_reinit(void)
 
 #ifdef CONFIG_I2C_0_NRF_TWIM
 I2C_NRFX_TWIM_DEVICE(0);
+static void semaphores_reinit(void)
+{
+	twim_0_data = data_cpy;
+}
+
+static void semaphores_init(void)
+{
+	data_cpy = twim_0_data;
+}
 #endif
 
 #ifdef CONFIG_I2C_1_NRF_TWIM
@@ -227,3 +248,4 @@ I2C_NRFX_TWIM_DEVICE(2);
 #ifdef CONFIG_I2C_3_NRF_TWIM
 I2C_NRFX_TWIM_DEVICE(3);
 #endif
+

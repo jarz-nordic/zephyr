@@ -598,7 +598,6 @@ void __uarte_unint(void)
 	}
 	while (!nrf_uarte_event_check(uarte, NRF_UARTE_EVENT_RXTO)) {
 	}
-
 	nrf_uarte_disable(uarte);
 
 	nrf_uarte_event_clear(uarte, NRF_UARTE_EVENT_TXSTOPPED);

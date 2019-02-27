@@ -324,18 +324,9 @@ void __spim_uninit(void)
 	*/
 }
 
-int __spim_reinit(void)
+void __spim_reinit(void)
 {
-int j;
-	volatile int i = nrfx_spim_init(&spim_cpy, &config_cpy, event_handler, &dev_cpy);
-	j = i + 1;
-	/*
-	nrfx_spim_t const * const p_instance = &get_dev_config(dev_cpy)->spim;
-	NRF_SPIM_Type * p_spim = (NRF_SPIM_Type *)p_instance->p_reg;
-
-	nrf_spim_enable(p_spim);
-	*/
-	return j;
+	nrfx_spim_init(&spim_cpy, &config_cpy, event_handler, &dev_cpy);
 }
 
 #if NRFX_CHECK(NRFX_SPIM_EXTENDED_ENABLED)

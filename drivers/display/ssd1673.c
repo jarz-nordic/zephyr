@@ -418,10 +418,6 @@ static int ssd1673_set_pixel_format(const struct device *dev,
 
 static int ssd1673_clear_and_write_buffer(struct device *dev);
 static struct device *dev_cpy;
-void __disp_reinit(void)
-{
-	ssd1673_clear_and_write_buffer(dev_cpy);
-}
 
 static int ssd1673_clear_and_write_buffer(struct device *dev)
 {
@@ -646,7 +642,6 @@ static int ssd1673_init(struct device *dev)
 	driver->cs_ctrl.delay = 0;
 	driver->spi_config.cs = &driver->cs_ctrl;
 #endif
-
 	return ssd1673_controller_init(dev);
 }
 

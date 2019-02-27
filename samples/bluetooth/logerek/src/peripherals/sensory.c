@@ -21,11 +21,14 @@ LOG_MODULE_REGISTER(app_sensory, LOG_LEVEL_INF);
 #define SENSORY_STACK_SIZE	(2048U)
 
 extern void __spim_uninit(void);
-extern int __spim_reinit(void);
+extern void __spim_reinit(void);
 extern void __twim_uninit(void);
 extern void __twim_reinit(void);
 extern void __uarte_unint(void);
 extern void __uarte_reinit(void);
+extern void __ssd1673_reinit(void);
+extern void __hdc_1008_reinit(void);
+static void sensors_thread_function(void *arg1, void *arg2, void *arg3);
 
 struct device_info {
 	struct device *dev;
@@ -33,7 +36,7 @@ struct device_info {
 };
 
 enum periph_device {
-//	DEV_IDX_HDC1010,
+	DEV_IDX_HDC1010,
 //	DEV_IDX_MMA8652,
 //	DEV_IDX_APDS9960,
 	DEV_IDX_EPD,
@@ -41,7 +44,7 @@ enum periph_device {
 };
 
 static struct device_info dev_info[] = {
-//	{ NULL, DT_TI_HDC1010_0_LABEL },
+	{ NULL, DT_TI_HDC1010_0_LABEL },
 //	{ NULL, DT_NXP_MMA8652FC_0_LABEL },
 //	{ NULL, DT_AVAGO_APDS9960_0_LABEL },
 	{ NULL, DT_SOLOMON_SSD1673FB_0_LABEL }
@@ -64,7 +67,7 @@ static void timeout_handle(struct k_work *work)
 	temperature_external = INVALID_SENSOR_VALUE;
 }
 
-/* humidity & temperature *
+/* humidity & temperature */
 static int get_hdc1010_val(void)
 {
 	struct sensor_value sensor;
@@ -95,78 +98,6 @@ static int get_hdc1010_val(void)
 	humidity = sensor.val1;
 
 	return 0;
-}
-*/
-#if 0
-/* xyz accelerometer */
-static int get_mma8652_val(struct sensor_value *val)
-{
-	if (sensor_sample_fetch(dev_info[DEV_IDX_MMA8652].dev)) {
-		LOG_ERR("Failed to fetch sample for device %s\n",
-		       dev_info[DEV_IDX_MMA8652].name);
-		return -1;
-	}
-
-	if (sensor_channel_get(dev_info[DEV_IDX_MMA8652].dev,
-			       SENSOR_CHAN_ACCEL_XYZ, &val[0])) {
-		LOG_ERR("Invalid Accelerometer value");
-		return -1;
-	}
-
-	return 0;
-}
-
-/* RGB Gesture */
-static int get_apds9960_val(struct sensor_value *val)
-{
-	if (sensor_sample_fetch(dev_info[DEV_IDX_APDS9960].dev)) {
-		LOG_ERR("Failed to fetch sample for device %s\n",
-		       dev_info[DEV_IDX_APDS9960].name);
-		return -1;
-	}
-
-	if (sensor_channel_get(dev_info[DEV_IDX_APDS9960].dev,
-			       SENSOR_CHAN_LIGHT, &val[0])) {
-		LOG_ERR("Invalid Light value");
-		return -1;
-	}
-
-	if (sensor_channel_get(dev_info[DEV_IDX_APDS9960].dev,
-			       SENSOR_CHAN_PROX, &val[1])) {
-		LOG_ERR("Invalid proximity value");
-		return -1;
-	}
-
-	return 0;
-}
-#endif
-
-extern void __ssd1673_reinit(void);
-
-static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
-{
-	nrf_gpio_cfg_output(32);
-	display_screen(SCREEN_BOOT);
-	power_sensors(false);
-	k_sleep(K_SECONDS(1));
-	power_sensors(true);
-	display_screen(SCREEN_SENSORS);
-	k_sleep(K_SECONDS(1));
-	power_sensors(false);
-
-	return;
-
-	while (1) {
-		/* power sensors and display */
-		power_sensors(true);
-
-		LOG_DBG("Sensors thread tick");
-//		get_hdc1010_val();
-		display_screen(SCREEN_SENSORS);
-		power_sensors(false);
-		/* switch off sensors and display */
-		k_sleep(K_SECONDS(5));
-	}
 }
 
 int sensory_init(void)
@@ -225,17 +156,14 @@ static inline void power_uarte(bool status)
 
 static inline void power_i2c(bool status)
 {
-	/*
 	if (status) {
 		__twim_reinit();
+		__hdc_1008_reinit();
 	} else {
 		__twim_uninit();
-		nrf_gpio_cfg_output(22);
-		nrf_gpio_cfg_output(23);
-		nrf_gpio_cfg_output(24);
-		nrf_gpio_cfg_output(25);
-		nrf_gpio_cfg_output(26);
+		return;
 		nrf_gpio_cfg_output(27);
+		nrf_gpio_cfg_output(26);
 		nrf_gpio_pin_write(26, 0);
 		nrf_gpio_pin_write(27, 0);
 		nrf_gpio_pin_write(23, 0);
@@ -243,22 +171,21 @@ static inline void power_i2c(bool status)
 		nrf_gpio_pin_write(24, 0);
 		nrf_gpio_pin_write(25, 0);
 	}
-	*/
 }
 
 static inline void power_sensors(bool state)
 {
 	/* switch on/off power supply */
 	if (state == false) {
+		power_uarte(0);
 		power_spim(0);
 		power_i2c(0);
-		power_uarte(0);
 		nrf_gpio_pin_write(32, 0);
 	} else {
-		power_i2c(1);
-		power_uarte(1);
 		nrf_gpio_pin_write(32, 1);
+		power_uarte(1);
 		k_busy_wait(K_MSEC(2));
+		power_i2c(1);
 		power_spim(1);
 	}
 }
@@ -286,4 +213,23 @@ int sensory_get_humidity(void)
 {
 	return humidity;
 }
+
+static void sensors_thread_function(void *arg1, void *arg2, void *arg3)
+{
+	nrf_gpio_cfg_output(32);
+//__twim_uninit();
+//__twim_reinit();
+	while (1) {
+		/* power sensors and display */
+		LOG_DBG("Sensors thread tick");
+		get_hdc1010_val();
+		display_screen(SCREEN_SENSORS);
+		k_sleep(K_SECONDS(2));
+		power_sensors(false);
+		/* switch off sensors and display */
+		k_sleep(K_SECONDS(2));
+		power_sensors(true);
+	}
+}
+
 
