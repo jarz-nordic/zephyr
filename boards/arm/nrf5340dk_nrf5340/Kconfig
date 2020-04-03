@@ -41,8 +41,7 @@ config BOARD_ENABLE_CPUNET
 	  so when this option is used with the non-secure version of the board,
 	  the application needs to take into consideration, that the secure firmware
 	  may already have started the Network MCU.
-	default y if (BT || NET_L2_IEEE802154)
-
+	default y if (BT || NET_L2_IEEE802154 || OPENAMP_MULTIINSTANCE)
 endif # BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPPNS || BOARD_NRF5340DK_NRF5340_CPUAPP || BOARD_NRF5340DK_NRF5340_CPUAPPNS
 
 if BOARD_NRF5340PDK_NRF5340_CPUNET || BOARD_NRF5340DK_NRF5340_CPUNET
