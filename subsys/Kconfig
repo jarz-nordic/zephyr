@@ -13,6 +13,8 @@ source "subsys/debug/Kconfig"
 
 source "subsys/disk/Kconfig"
 
+source "subsys/event_manager/Kconfig"
+
 source "subsys/fs/Kconfig"
 
 source "subsys/logging/Kconfig"
