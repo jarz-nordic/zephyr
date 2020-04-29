@@ -21,6 +21,8 @@ source "subsys/emul/Kconfig"
 
 source "subsys/fb/Kconfig"
 
+source "subsys/event_manager/Kconfig"
+
 source "subsys/fs/Kconfig"
 
 source "subsys/jwt/Kconfig"
