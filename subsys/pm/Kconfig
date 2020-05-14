@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
+
+config PM_ENABLE
+	bool "Enable Power Management"
+
+module = PM
+module-str = Power Management
+source "subsys/logging/Kconfig.template.log_config"
