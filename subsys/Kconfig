@@ -37,6 +37,8 @@ source "subsys/net/Kconfig"
 
 source "subsys/power/Kconfig"
 
+source "subsys/pm/Kconfig"
+
 source "subsys/shell/Kconfig"
 
 source "subsys/stats/Kconfig"
