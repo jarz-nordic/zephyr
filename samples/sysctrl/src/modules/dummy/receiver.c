@@ -11,22 +11,24 @@ LOG_MODULE_DECLARE(MAIN);
 #include "status_event.h"
 #include "read_event.h"
 #include "led_event.h"
+#include "sleep_event.h"
+#include "performance_event.h"
 
 #define READING_THREAD_STACK_SIZE	800
 #define READING_THREAD_PRIORITY		10
-#define READING_LED_EVT_NUM		4
+#define READING_IPC_EVT_NUM		4
 
 void read_timer_expiry_fn(struct k_timer *dummy);
-void led_timer_expiry_fn(struct k_timer *dummy);
+void ipc_timer_expiry_fn(struct k_timer *dummy);
 
-static struct k_sem m_led_sem[READING_LED_EVT_NUM];
+static struct k_sem m_ipc_sem[READING_IPC_EVT_NUM];
 static struct k_sem m_read_sem;
 
 static K_THREAD_STACK_DEFINE(reading_thread_stack, READING_THREAD_STACK_SIZE);
 static struct k_thread m_reading_thread;
 
 static K_TIMER_DEFINE(m_read_timer, read_timer_expiry_fn, NULL);
-static K_TIMER_DEFINE(m_led_timer, led_timer_expiry_fn, NULL);
+static K_TIMER_DEFINE(m_ipc_timer, ipc_timer_expiry_fn, NULL);
 
 
 /* Create read event periodically */
@@ -36,15 +38,50 @@ void read_timer_expiry_fn(struct k_timer *dummy)
 	EVENT_SUBMIT(evt);
 }
 
-/* Release random led semaphores in random times */
-void led_timer_expiry_fn(struct k_timer *dummy)
+/* Release random ipc semaphores in random times */
+void ipc_timer_expiry_fn(struct k_timer *dummy)
 {
 	uint8_t evt_id = sys_rand32_get() % 4;
-	k_sem_give(&m_led_sem[evt_id]);
+	k_sem_give(&m_ipc_sem[evt_id]);
 
 	uint32_t delay = sys_rand32_get() % 1000;
-	LOG_INF("Setting led timer delay to %d ms", delay);
-	k_timer_start(&m_led_timer, K_MSEC(delay), K_NO_WAIT);
+	LOG_INF("Setting ipc timer delay to %d ms", delay);
+	k_timer_start(&m_ipc_timer, K_MSEC(delay), K_NO_WAIT);
+}
+
+static void generate_random_event(u8_t domain)
+{
+
+	switch (sys_rand32_get() % 4)
+	{
+		case 1:
+		{
+			struct led_event * led_evt = new_led_event();
+			led_evt->domain = domain;
+			EVENT_SUBMIT(led_evt);
+		}
+		break;
+		case 2:
+		{
+			struct sleep_event * sleep_evt = new_sleep_event();
+			sleep_evt->request.domain = domain;
+			sleep_evt->request.time = (sys_rand32_get() | ((u64_t)sys_rand32_get() << 32));
+			EVENT_SUBMIT(sleep_evt);
+		}
+		break;
+		case 3:
+		{
+			struct performance_event * perf_evt = new_performance_event();
+			perf_evt->request.domain = domain,
+			perf_evt->request.time = (sys_rand32_get() | ((u64_t)sys_rand32_get() << 32)),
+			perf_evt->request.resource = sys_rand32_get() % 10,
+			perf_evt->request.mode = sys_rand32_get() % 4,
+			EVENT_SUBMIT(perf_evt);
+		}
+		break;
+		default:
+		break;
+	}
 }
 
 static void reading_thread_fn(void)
@@ -53,15 +90,13 @@ static void reading_thread_fn(void)
 		/* Acquire reading semaphore */
 		if(k_sem_take(&m_read_sem, K_FOREVER) == 0)
 		{
-			/* Foreach led endpoint, try to acquire its semaphore */
-			for(uint8_t i = 0; i < READING_LED_EVT_NUM; i++)
+			/* Foreach ipc endpoint, try to acquire its semaphore */
+			for(uint8_t i = 0; i < READING_IPC_EVT_NUM; i++)
 			{
-				if(k_sem_take(&m_led_sem[i], K_NO_WAIT) == 0)
+				if(k_sem_take(&m_ipc_sem[i], K_NO_WAIT) == 0)
 				{
-					/* If acquired semaphore, submit corresponding event */
-					struct led_event * led_evt = new_led_event();
-					led_evt->domain = i;
-					EVENT_SUBMIT(led_evt);
+					/* If acquired semaphore, submit random events */
+					generate_random_event(i);
 				}
 			}
 		}
@@ -70,10 +105,10 @@ static void reading_thread_fn(void)
 
 static void read_init(void)
 {
-	/* Initialize led semaphores */
-	for(uint8_t i = 0; i < READING_LED_EVT_NUM; i++)
+	/* Initialize ipc semaphores */
+	for(uint8_t i = 0; i < READING_IPC_EVT_NUM; i++)
 	{
-		k_sem_init(&m_led_sem[i], 0, 1);
+		k_sem_init(&m_ipc_sem[i], 0, 1);
 	}
 
 	/* Initialize read semaphore */
@@ -91,8 +126,8 @@ static void read_init(void)
 	/* Start periodic read timer */
 	k_timer_start(&m_read_timer, K_NO_WAIT, K_MSEC(1000));
 
-	/* Start non-periodic led timer */
-	k_timer_start(&m_led_timer, K_NO_WAIT, K_NO_WAIT);
+	/* Start non-periodic ipc timer */
+	k_timer_start(&m_ipc_timer, K_NO_WAIT, K_NO_WAIT);
 }
 
 static bool event_handler(const struct event_header *eh)
