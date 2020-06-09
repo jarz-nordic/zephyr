@@ -17,43 +17,79 @@
 
 #include <prism_dispatcher.h>
 
-#define PAYLOAD "fromApp"
+#define PAYLOAD "fromNRF53net"
+
+#define PRISM_DOMAIN_MAX_COUNT (8)
+
+#define IRQ_SEM_MAX_COUNT	  \
+	(PRISM_DOMAIN_MAX_COUNT * \
+	 CONFIG_PRISM_DISPATCHER_BACKEND_OPENAMP_VRING_SIZE)
+
+#define SEND_REPEAT_COUNT (3)
+
+#define THREAD_STACK_SIZE (1024)
 
 LOG_MODULE_REGISTER(nrf53net, CONFIG_LOG_DEFAULT_LEVEL);
 
-K_SEM_DEFINE(m_sem_irq, 0, 255);
+K_SEM_DEFINE(m_sem_irq, 0, IRQ_SEM_MAX_COUNT);
 
 struct k_thread m_rx_thread_cb;
 struct k_thread m_tx_thread_cb;
 
-K_THREAD_STACK_DEFINE(m_rx_thread_stack, 1024);
-K_THREAD_STACK_DEFINE(m_tx_thread_stack, 1024);
+K_THREAD_STACK_DEFINE(m_rx_thread_stack, THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(m_tx_thread_stack, THREAD_STACK_SIZE);
 
+/**
+ * @brief Function for handling IPC IRQs.
+ *
+ * This function is registered inside Prism Dispatcher and invoked every time
+ * IPC transport backend receives IPC IRQ signal.
+ */
 void prism_irq_handler(void)
 {
 	LOG_INF("IRQ handler invoked.");
 	k_sem_give(&m_sem_irq);
 }
 
+/**
+ * @brief Function for handling endpoint callbacks.
+ *
+ * This function is invoked every time IPC transport backend receives a valid message.
+ * It is common for all registered endpoints.
+ * Message contents are obtained using @ref prism_dispatcher_recv().
+ */
 static void eptx_handler(void)
 {
 	prism_dispatcher_msg_t msg;
 
-	prism_dispatcher_recv(&msg);
+	prism_dispatcher_err_t status = prism_dispatcher_recv(&msg);
+
+	if (status != PRISM_DISPATCHER_OK) {
+		LOG_ERR("Receive failed: %d", status);
+	}
 
 	LOG_INF("[Domain: %d | Ept: %u] handler invoked.", msg.domain_id, msg.ept_id);
-	LOG_HEXDUMP_INF(msg.payload, msg.size, "Payload:");
 
-	prism_dispatcher_free(&msg);
+	status = prism_dispatcher_free(&msg);
+	if (status != PRISM_DISPATCHER_OK) {
+		LOG_ERR("Free failed: %d", status);
+	}
 }
 
+/** @brief Array holding endpoints configurations. */
 static const prism_dispatcher_ept_t m_epts[] =
 {
-	{ PRISM_DOMAIN_SYSCTRL, 10, eptx_handler },
-	{ PRISM_DOMAIN_SYSCTRL, 20, eptx_handler },
-	{ PRISM_DOMAIN_SYSCTRL, 30, eptx_handler },
+	{ PRISM_DOMAIN_APP,    10, eptx_handler },
+	{ PRISM_DOMAIN_APP,    20, eptx_handler },
+	{ PRISM_DOMAIN_NET,    30, eptx_handler },
+	{ PRISM_DOMAIN_NET,    40, eptx_handler },
+	{ PRISM_DOMAIN_SECURE, 50, eptx_handler },
+	{ PRISM_DOMAIN_SECURE, 60, eptx_handler },
+	{ PRISM_DOMAIN_MODEM,  70, eptx_handler },
+	{ PRISM_DOMAIN_MODEM,  80, eptx_handler },
 };
 
+/** @brief Function for handling incoming IPC messages. */
 void rx_thread(void *arg1, void *arg2, void *arg3)
 {
 	while (1) {
@@ -65,6 +101,7 @@ void rx_thread(void *arg1, void *arg2, void *arg3)
 	}
 }
 
+/** @brief Function simulating asynchronous message sending. */
 void tx_thread(void *arg1, void *arg2, void *arg3)
 {
 	prism_dispatcher_msg_t msg =
@@ -75,13 +112,15 @@ void tx_thread(void *arg1, void *arg2, void *arg3)
 
 	prism_dispatcher_err_t status;
 
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < SEND_REPEAT_COUNT; i++) {
 		for (size_t ept_idx = 0; ept_idx < ARRAY_SIZE(m_epts); ept_idx++) {
 			prism_dispatcher_ept_t const *p_ept = &m_epts[ept_idx];
 			msg.domain_id = p_ept->domain_id;
 			msg.ept_id = p_ept->ept_id;
 
 			LOG_INF("Sending message to domain: %d, ept: %u", msg.domain_id, msg.ept_id);
+
+			// Wait for endpoint to become connected.
 			while ((status = prism_dispatcher_send(&msg)) == PRISM_DISPATCHER_ERR_NO_CONN) {
 				k_sleep(K_USEC(50));
 			}
