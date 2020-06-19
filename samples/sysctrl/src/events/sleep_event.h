@@ -13,16 +13,16 @@
  * @{
  */
 
-#include "pm/pm.h"
 #include "event_manager.h"
+#include <nrfs_phy.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct sleep_event {
-	struct event_header	header;
-	struct pm_request_sleep	request;
+	struct event_header header;
+	nrfs_phy_t *p_msg;
 };
 
 EVENT_TYPE_DECLARE(sleep_event);

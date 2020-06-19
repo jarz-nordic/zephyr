@@ -15,7 +15,7 @@ static void profile_led_event(struct log_event_buf *buf,
 	struct led_event *event = cast_led_event(eh);
 
 	ARG_UNUSED(event);
-	profiler_log_encode_u32(buf, event->domain);
+	profiler_log_encode_u32(buf, event->p_msg->domain_id);
 }
 
 static int log_led_event(const struct event_header *eh, char *buf,
@@ -23,7 +23,7 @@ static int log_led_event(const struct event_header *eh, char *buf,
 {
 	struct led_event *event = cast_led_event(eh);
 
-	return snprintf(buf, buf_len, "domain=%d", event->domain);
+	return snprintf(buf, buf_len, "domain=%d", event->p_msg->domain_id);
 }
 
 EVENT_INFO_DEFINE(led_event,
