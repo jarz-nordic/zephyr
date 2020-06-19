@@ -15,13 +15,15 @@
 
 #include "event_manager.h"
 
+#include <nrfs_phy.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct led_event {
 	struct event_header header;
-	u8_t domain;
+	nrfs_phy_t *p_msg;
 };
 
 EVENT_TYPE_DECLARE(led_event);
