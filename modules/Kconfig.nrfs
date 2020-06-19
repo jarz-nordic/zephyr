@@ -1,0 +1,4 @@
+config NRFS
+	bool "nRF Services Support"
+	help
+	  This option enables the nRF Services library
