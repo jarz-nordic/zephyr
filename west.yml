@@ -23,6 +23,8 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: prism-dispatcher-dev
       url-base: ssh://git@bitbucket.nordicsemi.no:7999/~nika
+    - name: nrfs-dev
+      url-base: ssh://git@bitbucket.nordicsemi.no:7999/~nika
 
   #
   # Please add items below based on alphabetical order
@@ -142,6 +144,10 @@ manifest:
       path: modules/lib/prism-dispatcher
       remote: prism-dispatcher-dev
       revision: e3ad3cbf0f7cbf488ced1b62b779c63430c5b5c5
+    - name: nrfs
+      path: modules/lib/nrfs
+      remote: nrfs-dev
+      revision: 1b6fec13c40fb3b373fb24c3b390baae5111cbc2
 
   self:
     path: zephyr
