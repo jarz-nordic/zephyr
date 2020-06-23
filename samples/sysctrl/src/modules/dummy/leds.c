@@ -14,6 +14,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "status_event.h"
 #include "led_event.h"
 #include "prism_event.h"
+#include "ncm.h"
 
 #include <nrfs_led.h>
 
@@ -23,6 +24,11 @@ LOG_MODULE_DECLARE(MAIN);
 #define LED3 DT_GPIO_PIN(DT_ALIAS(led3), gpios)
 
 static struct device *dev;
+
+static struct {
+	uint32_t dummy_service_specific_data;
+	struct ncm_ctx ctx;
+} led_ctx[1]; // TODO: should be probably defined via Kconfig
 
 static void led_init(void)
 {
@@ -36,6 +42,10 @@ static void led_init(void)
 
 static void led_handle(struct led_event *evt)
 {
+	// Save request context
+	// led_ctx.dummy_service_specific_data = (...);
+	ncm_fill(&led_ctx[0].ctx, evt->p_msg);
+
 	nrfs_led_t *p_req = (nrfs_led_t *)evt->p_msg->p_buffer;
 
 	uint8_t pin;
@@ -78,21 +88,10 @@ static void led_handle(struct led_event *evt)
 	prism_evt->status = PRISM_MSG_STATUS_RX_RELEASED;
 	EVENT_SUBMIT(prism_evt);
 
-	uint8_t dummy_response[] = { 1, 2, 3 };
-
-	void *p_buffer = k_malloc(sizeof(dummy_response));
-	(void)memcpy(p_buffer, &dummy_response, sizeof(dummy_response));
-
-	nrfs_phy_t *p_msg = k_malloc(sizeof(nrfs_phy_t));
-	p_msg->p_buffer = p_buffer;
-	p_msg->size = sizeof(dummy_response);
-	p_msg->ept_id = evt->p_msg->ept_id;
-	p_msg->domain_id = evt->p_msg->domain_id;
-
-	prism_evt = new_prism_event();
-	prism_evt->status = PRISM_MSG_STATUS_TX;
-	prism_evt->p_msg = p_msg;
-	EVENT_SUBMIT(prism_evt);
+	uint8_t dummy_response[] = { 128, 129, 130 };
+	void *p_buffer = ncm_alloc(sizeof(dummy_response));
+	(void)memcpy(p_buffer, dummy_response, sizeof(dummy_response));
+	ncm_notify(&led_ctx[0].ctx, p_buffer, sizeof(dummy_response));
 }
 
 static bool event_handler(const struct event_header *eh)
