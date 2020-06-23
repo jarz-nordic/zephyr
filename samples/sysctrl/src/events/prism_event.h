@@ -24,7 +24,6 @@ extern "C" {
 enum prism_msg_status {
 	PRISM_MSG_STATUS_RX,
 	PRISM_MSG_STATUS_RX_RELEASED,
-	PRISM_MSG_STATUS_TX,
 };
 
 struct prism_event {

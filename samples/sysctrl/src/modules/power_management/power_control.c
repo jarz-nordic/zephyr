@@ -18,8 +18,14 @@ LOG_MODULE_DECLARE(MAIN);
 #include "pm/pcm/performance.h"
 #include "pm/pcm/dispatcher.h"
 #include "pm/pcm/scheduler.h"
+#include "ncm.h"
 
 #include <nrfs_pm.h>
+
+static struct {
+	uint32_t dummy_service_specific_data;
+	struct ncm_ctx ctx;
+} power_control_ctx[1]; // TODO: should be probably defined via Kconfig
 
 static void power_control_init(void)
 {
@@ -32,25 +38,19 @@ static void power_handle(struct pm_request_power *pwr)
 	struct pm_return ret = pm_pcm_dispatcher_event_request(PM_PCM_DISPATCHER_EVENT_POWER, pwr);
 
 	if (ret.response != PM_RESPONSE_NONE) {
-		void *p_buffer = k_malloc(sizeof(ret));
+		void *p_buffer = ncm_alloc(sizeof(ret));
 		(void)memcpy(p_buffer, &ret, sizeof(ret));
-
-		nrfs_phy_t *p_msg = k_malloc(sizeof(nrfs_phy_t));
-		p_msg->p_buffer = p_buffer;
-		p_msg->size = sizeof(ret);
-		p_msg->ept_id = 0;
-		p_msg->domain_id = pwr->domain;
-
-		struct prism_event *prism_evt = new_prism_event();
-		prism_evt->status = PRISM_MSG_STATUS_TX;
-		prism_evt->p_msg = p_msg;
-		EVENT_SUBMIT(prism_evt);
+		ncm_notify(&power_control_ctx[0].ctx, p_buffer, sizeof(ret));
 	}
 }
 
 static void sleep_handle(struct sleep_event *evt)
 {
 	nrfs_pm_sleep_t *p_req = (nrfs_pm_sleep_t *)evt->p_msg->p_buffer;
+
+	// Save request context
+	// power_control_ctx.dummy_service_specific_data = (...);
+	ncm_fill(&power_control_ctx[0].ctx, evt->p_msg);
 
 	LOG_DBG("Got off, domain = %d, time = %08x%08x",
 		evt->p_msg->domain_id,

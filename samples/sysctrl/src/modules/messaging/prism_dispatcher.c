@@ -10,6 +10,7 @@ LOG_MODULE_DECLARE(MAIN);
 
 #include "prism_event.h"
 #include "status_event.h"
+#include "ld_notify_event.h"
 
 #include <prism_dispatcher.h>
 
@@ -111,23 +112,24 @@ static bool event_handler(const struct event_header *eh)
 			prism_dispatcher_free(&msg);
 			k_sem_give(&m_sem_free_msg);
 			return true;
-		} else if (evt->status == PRISM_MSG_STATUS_TX) {
-			prism_dispatcher_msg_t msg = {
-				.payload = evt->p_msg->p_buffer,
-				.size = evt->p_msg->size,
-				.ept_id = evt->p_msg->ept_id,
-				.domain_id = evt->p_msg->domain_id,
-			};
-			prism_dispatcher_err_t status;
-			status = prism_dispatcher_send(&msg);
-			if (status != PRISM_DISPATCHER_OK) {
-				LOG_ERR("Dispatcher send failed: %d", status);
-			}
-			k_free(evt->p_msg->p_buffer);
-			k_free(evt->p_msg);
-			return true;
 		}
 		return false;
+	}
+
+	if (is_ld_notify_event(eh)) {
+		struct ld_notify_event *evt = cast_ld_notify_event(eh);
+		prism_dispatcher_msg_t msg = {
+			.payload = evt->msg.p_buffer,
+			.size = evt->msg.size,
+			.ept_id = evt->msg.ept_id,
+			.domain_id = evt->msg.domain_id,
+		};
+		prism_dispatcher_err_t status = prism_dispatcher_send(&msg);
+		if (status != PRISM_DISPATCHER_OK) {
+			LOG_ERR("Dispatcher send failed: %d", status);
+		}
+		ncm_free(evt->msg.p_buffer);
+		return true;
 	}
 
 	/* If event is unhandled, unsubscribe. */
@@ -139,3 +141,4 @@ static bool event_handler(const struct event_header *eh)
 EVENT_LISTENER(PRISM_DISPATCHER, event_handler);
 EVENT_SUBSCRIBE(PRISM_DISPATCHER, status_event);
 EVENT_SUBSCRIBE(PRISM_DISPATCHER, prism_event);
+EVENT_SUBSCRIBE(PRISM_DISPATCHER, ld_notify_event);
