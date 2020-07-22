@@ -83,10 +83,7 @@ static void led_handle(struct led_event *evt)
 		break;
 	}
 
-	struct prism_event *prism_evt = new_prism_event();
-	prism_evt->p_msg = evt->p_msg;
-	prism_evt->status = PRISM_MSG_STATUS_RX_RELEASED;
-	EVENT_SUBMIT(prism_evt);
+	prism_event_release(evt->p_msg);
 
 	uint8_t dummy_response[] = { 128, 129, 130 };
 	void *p_buffer = ncm_alloc(sizeof(dummy_response));

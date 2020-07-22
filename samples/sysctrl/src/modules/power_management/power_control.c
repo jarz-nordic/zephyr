@@ -70,11 +70,7 @@ static void sleep_handle(struct sleep_event *evt)
 	struct pm_request_power req = pm_pcm_global_off_into_power(&sleep_req);
 
 	power_handle(&req);
-
-	struct prism_event *prism_evt = new_prism_event();
-	prism_evt->p_msg = evt->p_msg;
-	prism_evt->status = PRISM_MSG_STATUS_RX_RELEASED;
-	EVENT_SUBMIT(prism_evt);
+	prism_event_release(evt->p_msg);
 }
 
 static void performance_handle(struct performance_event *evt)
