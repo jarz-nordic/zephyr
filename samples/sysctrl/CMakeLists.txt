@@ -18,16 +18,20 @@ zephyr_library_include_directories(src/modules/messaging)
 target_sources(app PRIVATE src/main.c)
 
 target_sources(app PRIVATE
+		src/events/clock_event.c
 		src/events/status_event.c
 		src/events/led_event.c
+		src/events/gpms_event.c
 		src/events/sleep_event.c
 		src/events/performance_event.c
 		src/events/prism_event.c
 		src/events/ld_notify_event.c
+		src/events/radio_event.c
 )
 
 target_sources(app PRIVATE
 		src/modules/dummy/leds.c
+		src/modules/power_management/gpms.c
 		src/modules/power_management/power_control.c
 		src/modules/messaging/filter.c
 		src/modules/messaging/prism_dispatcher.c
