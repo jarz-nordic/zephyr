@@ -9,12 +9,6 @@
 
 #include <zephyr.h>
 
-struct ncm_srv_data {
-	nrfs_hdr_t hdr;
-	nrfs_ctx_t app_ctx;
-	uint8_t app_payload[];
-} __packed;
-
 void ncm_fill(struct ncm_ctx *p_ctx, nrfs_phy_t *p_msg)
 {
 	struct ncm_srv_data *p_data = (struct ncm_srv_data *)p_msg->p_buffer;

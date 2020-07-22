@@ -31,6 +31,12 @@ struct ncm_ctx {
 	nrfs_ctx_t app_ctx;
 };
 
+struct ncm_srv_data {
+    nrfs_hdr_t hdr;
+    nrfs_ctx_t app_ctx;
+    uint8_t app_payload[];
+} __packed;
+
 /**
  * @brief Fill single context entry with the details about the sender of the request.
  *
