@@ -11,35 +11,13 @@ LOG_MODULE_DECLARE(MAIN);
 #include "status_event.h"
 #include "prism_event.h"
 #include "led_event.h"
-#include "sleep_event.h"
+#include "gpms_event.h"
 
 #include <nrfs_hdr.h>
 
 static void filter_init(void)
 {
 	LOG_INF("Filter initialized");
-}
-
-static void *pm_msg_filter(nrfs_phy_t *p_msg)
-{
-	nrfs_hdr_t *p_hdr = NRFS_HDR_GET(p_msg);
-	void *p_evt = NULL;
-
-	switch (p_hdr->req) {
-	case NRFS_PM_REQ_SLEEP:
-		p_evt = new_sleep_event();
-		struct sleep_event *sleep_evt = cast_sleep_event(p_evt);
-		sleep_evt->p_msg = p_msg;
-		break;
-
-	case NRFS_PM_REQ_PERF:
-		break;
-
-	default:
-		break;
-	}
-
-	return p_evt;
 }
 
 static void *led_msg_filter(nrfs_phy_t *p_msg)
@@ -50,10 +28,18 @@ static void *led_msg_filter(nrfs_phy_t *p_msg)
 	return led_evt;
 }
 
+static void *gpms_msg_filter(nrfs_phy_t *p_msg)
+{
+    struct gpms_event *gpms_evt = new_gpms_event();
+
+    gpms_evt->p_msg = p_msg;
+    return gpms_evt;
+}
+
 static void * (*const filters[])(nrfs_phy_t * p_msg) =
 {
 	[NRFS_SERVICE_ID_LED] = led_msg_filter,
-	[NRFS_SERVICE_ID_PM] = pm_msg_filter,
+	[NRFS_SERVICE_ID_GPMS] = gpms_msg_filter,
 };
 
 static void msg_received(struct prism_event *evt)
