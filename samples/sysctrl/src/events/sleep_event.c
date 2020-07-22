@@ -7,15 +7,14 @@
 #include <stdio.h>
 
 #include "sleep_event.h"
-
-#include <nrfs_pm.h>
+#include <nrfs_gpms.h>
 
 static int log_sleep_event(const struct event_header *eh, char *buf,
 			   size_t buf_len)
 {
 	struct sleep_event *event = cast_sleep_event(eh);
 
-	nrfs_pm_sleep_t *p_req = (nrfs_pm_sleep_t *)event->p_msg->p_buffer;
+	nrfs_gpms_sleep_t *p_req = (nrfs_gpms_sleep_t *)event->p_msg->p_buffer;
 
 	return snprintf(buf, buf_len, "domain=%d, time=%08x%08x",
 			event->p_msg->domain_id,
