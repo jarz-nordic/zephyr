@@ -26,6 +26,17 @@ static int log_prism_event(const struct event_header *eh, char *buf,
 			event->p_msg->domain_id, event->p_msg->size, event->status);
 }
 
+void prism_event_release(nrfs_phy_t *msg)
+{
+	__ASSERT_NO_MSG(msg);
+
+	struct prism_event *prism_evt = new_prism_event();
+
+	prism_evt->p_msg = msg;
+	prism_evt->status = PRISM_MSG_STATUS_RX_RELEASED;
+	EVENT_SUBMIT(prism_evt);
+}
+
 EVENT_INFO_DEFINE(prism_event,
 		  ENCODE(PROFILER_ARG_U8),
 		  ENCODE("domain"),
