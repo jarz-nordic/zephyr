@@ -59,12 +59,8 @@ static void eptx_handler(void)
 	nrfs_gpms_notify_t *p_data = (nrfs_gpms_notify_t *) msg.payload;
 
 	switch (p_data->data.result) {
-	case 0:
+	case NRFS_GPMS_ERR_NONE:
 		LOG_INF("RESPONSE: SUCCESS %d", p_data->data.result);
-		break;
-
-	case 1:
-		LOG_INF("RESPONSE: FAILURE %d", p_data->data.result);
 		break;
 
 	case NRFS_GPMS_ERR_NOMEM:
