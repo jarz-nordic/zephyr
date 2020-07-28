@@ -147,7 +147,7 @@ manifest:
     - name: nrfs
       path: modules/lib/nrfs
       remote: nrfs-dev
-      revision: f10f32d9baee90a1c07af5ba5b95e05d9765d95e
+      revision: master-zephyr
 
   self:
     path: zephyr
