@@ -131,7 +131,6 @@ static void nrfs_pm_radio_release(nrfs_gpms_radio_t *p_req, void *p_context)
 
 void txrx_thread(void *arg1, void *arg2, void *arg3)
 {
-	uint32_t cnt = 0;
 	uint32_t ctx = 0;
 
 	while (1) {
@@ -171,10 +170,10 @@ void txrx_thread(void *arg1, void *arg2, void *arg3)
 			case 1: {
 				if (sys_rand32_get() % 2 == 0) {
 					LOG_INF("RADIO: ON request.");
-					nrfs_pm_radio_request(&gpms_req, 500, true, ctx);
+					nrfs_pm_radio_request(&gpms_req, 500, true, (uint32_t *)ctx);
 				} else {
 					LOG_INF("RADIO: OFF request.");
-					nrfs_pm_radio_release(&gpms_req, ctx);
+					nrfs_pm_radio_release(&gpms_req, (uint32_t *)ctx);
 				}
 				msg.payload = &gpms_req;
 				msg.size = sizeof(gpms_req);
@@ -183,7 +182,7 @@ void txrx_thread(void *arg1, void *arg2, void *arg3)
 
 			case 2: {
 				LOG_INF("SLEEP: request.");
-				pm_service_sleep_req_generate(&pm_sleep_req, ctx);
+				pm_service_sleep_req_generate(&pm_sleep_req, (uint32_t *)ctx);
 				msg.payload = &pm_sleep_req;
 				msg.size = sizeof(pm_sleep_req);
 			}
@@ -193,7 +192,7 @@ void txrx_thread(void *arg1, void *arg2, void *arg3)
 				LOG_INF("CLOCK: request.");
 				pm_service_clock_req_generate(&pm_clock_req, sys_rand32_get(),
 							      sys_rand32_get(),
-							      true, ctx);
+							      true, (uint32_t *)ctx);
 				msg.payload = &pm_clock_req;
 				msg.size = sizeof(pm_clock_req);
 			}
