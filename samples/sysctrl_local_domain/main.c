@@ -16,235 +16,119 @@
 #include <init.h>
 #include <random/rand32.h>
 
-#include <prism_dispatcher.h>
-
 #include <nrfs_led.h>
-#include <nrfs_gpms.h>
+#include <nrfs_pm.h>
 
 LOG_MODULE_REGISTER(nrf53net, CONFIG_LOG_DEFAULT_LEVEL);
 
-void led_timer_expiry_fn(struct k_timer *dummy);
+void tx_timer_expiry_fn(struct k_timer *dummy);
 
-static struct k_thread m_txrx_thread_cb;
-static K_THREAD_STACK_DEFINE(m_txrx_thread_stack, 1024);
-static K_TIMER_DEFINE(m_led_timer, led_timer_expiry_fn, NULL);
+static struct k_thread m_tx_thread_cb;
+static K_THREAD_STACK_DEFINE(m_tx_thread_stack, 1024);
+static K_TIMER_DEFINE(m_tx_timer, tx_timer_expiry_fn, NULL);
 static K_SEM_DEFINE(m_sem_irq, 0, 255);
 static K_SEM_DEFINE(m_sem_tx, 0, 1);
 
-struct ncm_srv_data {
-	nrfs_hdr_t hdr;
-	nrfs_ctx_t app_ctx;
-	uint8_t app_payload[];
-} __packed;
-
-void led_timer_expiry_fn(struct k_timer *dummy)
+void tx_timer_expiry_fn(struct k_timer *dummy)
 {
 	uint32_t delay = sys_rand32_get() % 1000;
 
 	k_sem_give(&m_sem_tx);
 
-	LOG_INF("Setting led timer delay to %d ms", delay);
-	k_timer_start(&m_led_timer, K_MSEC(delay), K_NO_WAIT);
+	LOG_INF("Setting TX timer delay to %d ms", delay);
+	k_timer_start(&m_tx_timer, K_MSEC(delay), K_NO_WAIT);
 }
 
-void prism_irq_handler(void)
+static uint32_t context_generate(void)
 {
-	LOG_INF("IPC IRQ handler invoked.");
-	k_sem_give(&m_sem_irq);
+	return sys_rand32_get();
 }
 
-static void eptx_handler(void)
+static void request_generate(void)
 {
-	prism_dispatcher_msg_t msg;
+	uint32_t ctx = context_generate();
+	nrfs_err_t status;
 
-	prism_dispatcher_recv(&msg);
-
-	LOG_INF("[Domain: %d | Ept: %u] handler invoked.", msg.domain_id, msg.ept_id);
-	LOG_HEXDUMP_INF(msg.payload, msg.size, "Payload:");
-
-	const struct ncm_srv_data *p_data =
-		(const struct ncm_srv_data *) msg.payload;
-
-	uint8_t response = p_data->app_payload[0];
-
-	switch (p_data->hdr.req) {
-	case NRFS_GPMS_REQ_RADIO:
-		LOG_INF("RESPONSE: RADIO: %d", response);
+	switch (sys_rand32_get() % 3) {
+	case 0:
+		LOG_INF("LED: toggle.");
+		status = nrfs_led_state_change(NRFS_LED_OP_TOGGLE, sys_rand32_get() % 4);
 		break;
 
-	case NRFS_GPMS_REQ_SLEEP:
-		LOG_INF("RESPONSE: SLEEP: %d", response);
+	case 1:
+		if (sys_rand32_get() % 2 == 0) {
+			LOG_INF("RADIO: ON request.");
+			status = nrfs_pm_radio_request(500, true, (void *)ctx);
+		} else {
+			LOG_INF("RADIO: OFF request.");
+			status = nrfs_pm_radio_release((void *)ctx);
+		}
 		break;
 
-	case NRFS_GPMS_REQ_CLK_FREQ:
-		LOG_INF("RESPONSE: CLOCK: %d", response);
-		break;
-
-	case NRFS_LED_REQ_CHANGE_STATE:
-		LOG_INF("RESPONSE: LED");
+	case 2:
+		LOG_INF("CLOCK: request.");
+		status = nrfs_pm_cpu_clock_request(sys_rand32_get(),
+						   NRFS_GPMS_CPU_CLOCK_FREQUENCY_64_MHZ, true, (void *)ctx);
 		break;
 
 	default:
-		LOG_INF("RESPONSE: UNKNOWN");
 		break;
 	}
 
-	prism_dispatcher_free(&msg);
-}
-
-static const prism_dispatcher_ept_t m_epts[] = {
-	{ PRISM_DOMAIN_SYSCTRL, 0, eptx_handler },
-	{ PRISM_DOMAIN_SYSCTRL, 1, eptx_handler },
-	{ PRISM_DOMAIN_SYSCTRL, 2, eptx_handler },
-	{ PRISM_DOMAIN_SYSCTRL, 3, eptx_handler },
-};
-
-static void led_service_req_generate(nrfs_led_t *p_req)
-{
-	NRFS_SERVICE_HDR_FILL(p_req, NRFS_LED_REQ_CHANGE_STATE);
-	p_req->data.op = NRFS_LED_OP_TOGGLE;
-	p_req->data.led_idx = sys_rand32_get() % 4;
-}
-
-static void pm_service_clock_req_generate(nrfs_gpms_clock_t *p_req,
-					  uint8_t frequency, uint64_t time,
-					  bool do_notify, void *p_context)
-{
-	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_CLK_FREQ);
-	p_req->ctx.ctx = (uint32_t) p_context;
-	p_req->data.frequency = frequency;
-	p_req->data.time = time;
-	p_req->data.do_notify = do_notify;
-}
-
-static void pm_service_sleep_req_generate(nrfs_gpms_sleep_t *p_req,
-					  void *p_context)
-{
-	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_SLEEP);
-	p_req->ctx.ctx = (uint32_t) p_context;
-	p_req->data.time = (sys_rand32_get() | ((uint64_t) sys_rand32_get() << 32));
-	p_req->data.latency = sys_rand32_get();
-	p_req->data.state = NRFS_GPMS_SLEEP_SYSTEM_OFF;
-}
-
-static void nrfs_pm_radio_request(nrfs_gpms_radio_t *p_req, uint64_t time,
-				  bool do_notify, void *p_context)
-{
-	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_RADIO);
-	p_req->ctx.ctx = (uint32_t) p_context;
-	p_req->data.request = NRFS_RADIO_OP_ON;
-	p_req->data.time = time;
-	p_req->data.do_notify = do_notify;
-}
-
-static void nrfs_pm_radio_release(nrfs_gpms_radio_t *p_req, void *p_context)
-{
-	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_RADIO);
-	p_req->ctx.ctx = (uint32_t) p_context;
-	p_req->data.request = NRFS_RADIO_OP_OFF;
-	p_req->data.time = 0;
-	p_req->data.do_notify = false;
-}
-
-void txrx_thread(void *arg1, void *arg2, void *arg3)
-{
-	uint32_t ctx = 0;
-
-	while (1) {
-		if (k_sem_take(&m_sem_irq, K_USEC(100)) == 0) {
-			prism_dispatcher_err_t status = prism_dispatcher_process(NULL);
-
-			if (status != PRISM_DISPATCHER_OK &&
-			    status != PRISM_DISPATCHER_ERR_NO_MSG) {
-
-				LOG_ERR("Process failed: %d", status);
-			}
-		}
-
-		if (k_sem_take(&m_sem_tx, K_NO_WAIT) == 0) {
-			uint8_t ept_id = sys_rand32_get() % PRISM_DISPATCHER_EPT_COUNT;
-			prism_dispatcher_msg_t msg = {
-				.domain_id = PRISM_DOMAIN_SYSCTRL,
-				.ept_id = ept_id,
-			};
-
-			nrfs_led_t led_req;
-			nrfs_gpms_clock_t pm_clock_req;
-			nrfs_gpms_sleep_t pm_sleep_req;
-			nrfs_gpms_radio_t gpms_req;
-
-			/* Generate random context. */
-			ctx = sys_rand32_get();
-
-			switch (sys_rand32_get() % 4) {
-			case 0: {
-				led_service_req_generate(&led_req);
-				msg.payload = &led_req;
-				msg.size = sizeof(led_req);
-			}
-			break;
-
-			case 1: {
-				if (sys_rand32_get() % 2 == 0) {
-					LOG_INF("RADIO: ON request.");
-					nrfs_pm_radio_request(&gpms_req, 500, true, (uint32_t *)ctx);
-				} else {
-					LOG_INF("RADIO: OFF request.");
-					nrfs_pm_radio_release(&gpms_req, (uint32_t *)ctx);
-				}
-				msg.payload = &gpms_req;
-				msg.size = sizeof(gpms_req);
-			}
-			break;
-
-			case 2: {
-				LOG_INF("SLEEP: request.");
-				pm_service_sleep_req_generate(&pm_sleep_req, (uint32_t *)ctx);
-				msg.payload = &pm_sleep_req;
-				msg.size = sizeof(pm_sleep_req);
-			}
-			break;
-
-			case 3: {
-				LOG_INF("CLOCK: request.");
-				pm_service_clock_req_generate(&pm_clock_req, sys_rand32_get(),
-							      sys_rand32_get(),
-							      true, (uint32_t *)ctx);
-				msg.payload = &pm_clock_req;
-				msg.size = sizeof(pm_clock_req);
-			}
-			break;
-
-			default:
-				break;
-			}
-
-			prism_dispatcher_err_t status = prism_dispatcher_send(&msg);
-
-			if (status != PRISM_DISPATCHER_OK) {
-				LOG_ERR("Sending failed: %d", status);
-			}
-		}
+	if (status != NRFS_SUCCESS) {
+		LOG_ERR("Request send failed: %d", status);
 	}
+}
+
+void tx_thread(void *arg1, void *arg2, void *arg3)
+{
+	while (1) {
+		k_sem_take(&m_sem_tx, K_FOREVER);
+		request_generate();
+	}
+}
+
+void pm_handler(nrfs_pm_evt_t evt, void *context)
+{
+	switch (evt) {
+	case NRFS_PM_EVT_NOTIFICATION:
+		LOG_INF("PM handler - notification: 0x%x", (uint32_t)context);
+		break;
+	case NRFS_PM_EVT_ERROR:
+		LOG_INF("PM handler - error: 0x%x", (uint32_t)context);
+		break;
+	default:
+		LOG_ERR("PM handler - unexpected event: 0x%x", evt);
+		break;
+	}
+}
+
+void led_handler(void *p_buffer, size_t size)
+{
+	LOG_HEXDUMP_INF(p_buffer, size, "LED handler - notification:");
 }
 
 int main(void)
 {
-	LOG_INF("Application domain.");
+	LOG_INF("Local domain.");
 
-	prism_dispatcher_err_t status;
+	nrfs_err_t status;
 
-	status = prism_dispatcher_init(prism_irq_handler, m_epts,
-				       ARRAY_SIZE(m_epts));
-	if (status != PRISM_DISPATCHER_OK) {
-		LOG_ERR("Dispatcher init failed: %d", status);
+	status = nrfs_pm_init(pm_handler);
+	if (status != NRFS_SUCCESS) {
+		LOG_ERR("PM service init failed: %d", status);
 	}
 
-	k_thread_create(&m_txrx_thread_cb, m_txrx_thread_stack,
-			K_THREAD_STACK_SIZEOF(m_txrx_thread_stack), txrx_thread, NULL, NULL,
+	status = nrfs_led_init(led_handler);
+	if (status != NRFS_SUCCESS) {
+		LOG_ERR("LED service init failed: %d", status);
+	}
+
+	k_thread_create(&m_tx_thread_cb, m_tx_thread_stack,
+			K_THREAD_STACK_SIZEOF(m_tx_thread_stack), tx_thread, NULL, NULL,
 			NULL, 0, 0, K_NO_WAIT);
 
-	k_timer_start(&m_led_timer, K_MSEC(10), K_NO_WAIT);
+	k_timer_start(&m_tx_timer, K_MSEC(10), K_NO_WAIT);
 
 	return 0;
 }
