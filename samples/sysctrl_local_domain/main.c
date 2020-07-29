@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <init.h>
+#include <random/rand32.h>
 
 #include <prism_dispatcher.h>
 
