@@ -14,7 +14,6 @@ LOG_MODULE_DECLARE(MAIN);
 
 #include "status_event.h"
 #include "clock_event.h"
-#include "sleep_event.h"
 #include "gpms_event.h"
 #include "gpms_notify_event.h"
 #include "prism_event.h"
@@ -120,37 +119,6 @@ static void gpms_notification_handler(const struct gpms_notify_event *evt)
 	prism_event_release(evt->p_msg);
 }
 
-/* @brief Sleep request handler.
- * @note  This function sends sleep event to the PM controller.
- * @param evt Pointer to the event structure.
- * @retval None.
- */
-static void gpms_handler_req_sleep(const struct gpms_event *evt)
-{
-	nrfs_gpms_sleep_t *p_req = (nrfs_gpms_sleep_t *) evt->p_msg->p_buffer;
-
-	int result = gpms_notify_ctx_save(evt, &p_req->ctx.ctx, false);
-
-	/* Forward the message further. */
-	struct sleep_event *sleep_evt = new_sleep_event();
-
-	if (sleep_evt) {
-		sleep_evt->p_msg = evt->p_msg;
-		sleep_evt->status = result;
-		EVENT_SUBMIT(sleep_evt);
-	}
-}
-
-/* @brief Performance request handler.
- * @note  This function is TBD.
- * @param evt Pointer to the event structure.
- * @retval None.
- */
-static void gpms_handler_req_perf(const struct gpms_event *evt)
-{
-	/* TODO */
-}
-
 /* @brief Radio request handler.
  * @note  This function sends radio event to the PM controller.
  * @param evt Pointer to the event structure.
@@ -215,14 +183,6 @@ static void gpms_handle(const struct gpms_event *evt)
 	nrfs_hdr_t hdr = p_data->hdr;
 
 	switch (hdr.req) {
-	case NRFS_GPMS_REQ_SLEEP:
-		gpms_handler_req_sleep(evt);
-		break;
-
-	case NRFS_GPMS_REQ_PERF:
-		gpms_handler_req_perf(evt);
-		break;
-
 	case NRFS_GPMS_REQ_RADIO:
 		gpms_handler_req_radio(evt);
 		break;
