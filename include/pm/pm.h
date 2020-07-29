@@ -56,10 +56,10 @@ enum pm_response {
  * Sleep request, coming from local domains when sleep mode or system off is needed.
  */
 struct pm_request_sleep {
-	u8_t          domain;
+	uint8_t       domain;
 	enum pm_sleep state;	/* Requested sleep state. */
-	u64_t         time;	/* Expected wake-up time (only for sleep states). */
-	u32_t         latency;	/* Maximum tolerated interrupt latency. */
+	uint64_t      time;	/* Expected wake-up time (only for sleep states). */
+	uint32_t      latency;	/* Maximum tolerated interrupt latency. */
 };
 
 /** 
@@ -69,10 +69,10 @@ struct pm_request_sleep {
 /* TODO: change to based on local PM instead of copy of power_request.
  * Question is how to combine RADIO requests and frequency requests into one. */
 struct pm_request_performance {
-	u8_t  domain;
-	u64_t time;
-	u8_t  resource;
-	u8_t  mode;
+	uint8_t  domain;
+	uint64_t time;
+	uint8_t  resource;
+	uint8_t  mode;
 };
 
 /**
@@ -80,10 +80,10 @@ struct pm_request_performance {
  * Power request, internal structure compiled from sleep and performance requests.
  */
 struct pm_request_power {
-	u8_t  domain;
-	u64_t time;
-	u8_t  resource;
-	u8_t  mode;
+	uint8_t  domain;
+	uint64_t time;
+	uint8_t  resource;
+	uint8_t  mode;
 };
 
 /**
@@ -92,9 +92,9 @@ struct pm_request_power {
  */
 struct pm_return {
 	enum pm_response response;
-	u8_t             domain;
-	u8_t             resource;
-	u8_t             mode;
+	uint8_t          domain;
+	uint8_t          resource;
+	uint8_t          mode;
 };
 
 /**
@@ -102,7 +102,7 @@ struct pm_return {
  * State structure is array of resources that stores their modes.
  */
 struct pm_state {
-	u8_t res[PM_RESOURCE_NUM];
+	uint8_t res[PM_RESOURCE_NUM];
 };
 
 /**
@@ -112,7 +112,7 @@ struct pm_state {
 struct pm_traversal {
 	struct pm_state  state;		/* State after request. */
 	enum pm_response response;	/* Traversal return code. */
-	u64_t            time;		/* Required time (valid for OK response code). */
+	uint64_t         time;		/* Required time (valid for OK response code). */
 };
 
 #endif /* ZEPHYR_INCLUDE_PM_PM_H_ */

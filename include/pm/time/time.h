@@ -33,13 +33,13 @@ typedef void (*pm_time_callback_fn)(void *context);
  * @retval 0 If successful.
  */
 
-int pm_time_callback_add(u64_t time, pm_time_callback_fn callback, void *context);
+int pm_time_callback_add(uint64_t time, pm_time_callback_fn callback, void *context);
 
 /**
  * @brief Get time used by Time Management Module.
  *
  * @return Current time from Time Management Module RTC.
  */
-u64_t pm_time_rtc_get(void);
+uint64_t pm_time_rtc_get(void);
 
 #endif /* ZEPHYR_INCLUDE_PM_TIME_TIME_H_ */

@@ -18,8 +18,8 @@ static int log_sleep_event(const struct event_header *eh, char *buf,
 
 	return snprintf(buf, buf_len, "domain=%d, time=%08x%08x",
 			event->p_msg->domain_id,
-			(u32_t)((p_req->data.time & 0xFFFFFFFF00000000) >> 32),
-			(u32_t)(p_req->data.time & 0x00000000FFFFFFFF));
+			(uint32_t)((p_req->data.time & 0xFFFFFFFF00000000) >> 32),
+			(uint32_t)(p_req->data.time & 0x00000000FFFFFFFF));
 }
 
 EVENT_INFO_DEFINE(sleep_event,

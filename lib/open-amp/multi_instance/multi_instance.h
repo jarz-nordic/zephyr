@@ -140,7 +140,7 @@ struct ipc_inst_t
     const struct device        * ipm_tx_handle; /* TX handler */
     const struct device        * ipm_rx_handle; /* RX handler */
 
-    uint32_t                        shmem_status_reg_addr;
+    uint32_t                     shmem_status_reg_addr;
     struct rpmsg_virtio_device   rvdev;
     struct rpmsg_virtio_shm_pool shpool;
     struct rpmsg_device        * rdev;
