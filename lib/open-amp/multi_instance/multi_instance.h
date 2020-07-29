@@ -107,7 +107,7 @@ struct ipc_ept_t
     struct rpmsg_endpoint ep;    /**< Endpoint. */
     ept_handler           cb;    /**< Callback to endpoint handler. */
     void                * arg;   /**< Pointer to user argument. */
-    u32_t                 flags; /**< Endpoint flags. */
+    uint32_t              flags; /**< Endpoint flags. */
 };
 
 /** @brief Endpoint configuration structure. */
@@ -124,7 +124,7 @@ struct ipc_config_t
 {
     const char * ipm_name_tx; /* Name of the TX IPM channel. */
     const char * ipm_name_rx; /* Name of the RX IPM channel. */
-    u8_t         vring_size;  /* Number of used slots in virtqueue. */
+    uint8_t      vring_size;  /* Number of used slots in virtqueue. */
     uint32_t     shmem_addr;  /* Address of the assigned shared memory region for
                                  that particular instance. */
     uint32_t     shmem_size;  /* Size of the assigned shared memory for that instance. */
@@ -140,7 +140,7 @@ struct ipc_inst_t
     struct device              * ipm_tx_handle; /* TX handler */
     struct device              * ipm_rx_handle; /* RX handler */
 
-    u32_t                        shmem_status_reg_addr;
+    uint32_t                     shmem_status_reg_addr;
     struct rpmsg_virtio_device   rvdev;
     struct rpmsg_virtio_shm_pool shpool;
     struct rpmsg_device        * rdev;
@@ -163,7 +163,7 @@ struct ipc_inst_t
     struct rpmsg_hdr           * rp_hdr;
     uint32_t                     msg_len;
     uint16_t                     msg_idx;
-    u32_t                        flags;
+    uint32_t                     flags;
 };
 
 /** @brief Function for initializing IPC instance.

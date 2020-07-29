@@ -30,7 +30,7 @@
  * @return Traversal structure, containing information about possibility
  *         of requested change, time needed and subsequent state.
  */
-struct pm_traversal pm_pcm_algorithm_run(struct pm_state *state, u8_t resource,
-					 u8_t mode, bool enforce);
+struct pm_traversal pm_pcm_algorithm_run(struct pm_state *state, uint8_t resource,
+					 uint8_t mode, bool enforce);
 
 #endif /* ZEPHYR_INCLUDE_PM_PCM_ALGORITHM_H_ */

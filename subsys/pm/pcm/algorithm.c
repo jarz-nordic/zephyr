@@ -12,8 +12,8 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(PM_PCM_ALGORITHM, 4);
 
-struct pm_traversal pm_pcm_algorithm_run(struct pm_state *state, u8_t resource,
-					 u8_t mode, bool enforce)
+struct pm_traversal pm_pcm_algorithm_run(struct pm_state *state, uint8_t resource,
+					 uint8_t mode, bool enforce)
 {
 	__ASSERT_NO_MSG(resource < PM_RESOURCE_NUM);
 	__ASSERT_NO_MSG(mode < PM_MODE_NUM);

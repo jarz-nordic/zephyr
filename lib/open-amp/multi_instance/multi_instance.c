@@ -83,7 +83,7 @@ static unsigned char virtio_get_status(struct virtio_device * p_vdev)
  *
  * @retval Virio features.
  */
-static u32_t virtio_get_features(struct virtio_device * vdev)
+static uint32_t virtio_get_features(struct virtio_device * vdev)
 {
     return BIT(VIRTIO_RPMSG_F_NS);
 }
@@ -111,7 +111,7 @@ static void virtio_set_status(struct virtio_device * p_vdev, unsigned char statu
  *
  * @retval None.
  */
-static void virtio_set_features(struct virtio_device *vdev, u32_t features)
+static void virtio_set_features(struct virtio_device *vdev, uint32_t features)
 {
     /* No need for implementation */
 }
@@ -185,8 +185,8 @@ static int ipc_configure_shmem(struct ipc_inst_t * p_ipm,
 {
     p_ipm->shmem_status_reg_addr = p_config->shmem_addr;
 
-    u32_t shmem_local_start_addr = p_config->shmem_addr + VDEV_STATUS_SIZE;
-    u32_t shmem_local_size = p_config->shmem_size - (VDEV_STATUS_SIZE);
+    uint32_t shmem_local_start_addr = p_config->shmem_addr + VDEV_STATUS_SIZE;
+    uint32_t shmem_local_size = p_config->shmem_size - (VDEV_STATUS_SIZE);
 
     p_ipm->shm_physmap[0] = shmem_local_start_addr;
 
@@ -205,8 +205,8 @@ static int ipc_configure_shmem(struct ipc_inst_t * p_ipm,
     p_ipm->shm_device.irq_num = 0;
     p_ipm->shm_device.irq_info = NULL;
 
-    u32_t rpmsg_reg_size = 2 * VIRTQUEUE_SIZE_GET(p_config->vring_size);
-    u32_t vring_region_size = VRING_SIZE_COMPUTE(p_config->vring_size, VRING_ALIGNMENT);
+    uint32_t rpmsg_reg_size = 2 * VIRTQUEUE_SIZE_GET(p_config->vring_size);
+    uint32_t vring_region_size = VRING_SIZE_COMPUTE(p_config->vring_size, VRING_ALIGNMENT);
 
     p_ipm->vring_rx_address = shmem_local_start_addr + rpmsg_reg_size;
     p_ipm->vring_tx_address = p_ipm->vring_rx_address + vring_region_size;
@@ -291,7 +291,7 @@ static int rpmsg_virtio_return_buffer(struct rpmsg_virtio_device * p_rvdev,
  *
  * @return None.
  */
-static void ipm_callback(void * context, u32_t id, volatile void * data)
+static void ipm_callback(void * context, uint32_t id, volatile void * data)
 {
     struct ipc_inst_t * p_ipm = (struct ipc_inst_t*) context;
 
@@ -478,7 +478,7 @@ void ipc_deinit(struct ipc_inst_t * p_ipm)
 
 struct ipc_ept_t * ipc_endpoint_get_next_free(void)
 {
-    for (u8_t i = 0; i < CONFIG_IPC_ENDPOINTS_NO; i++)
+    for (uint8_t i = 0; i < CONFIG_IPC_ENDPOINTS_NO; i++)
     {
         if(!(ipc_ctx.epts[i].flags & BIT(EP_FLAG_USED)))
         {
@@ -491,7 +491,7 @@ struct ipc_ept_t * ipc_endpoint_get_next_free(void)
 
 struct ipc_inst_t * ipc_inst_get_next_free(void)
 {
-    for (u8_t i = 0; i < CONFIG_IPC_INSTANCES_NO; i++)
+    for (uint8_t i = 0; i < CONFIG_IPC_INSTANCES_NO; i++)
     {
         if(!(ipc_ctx.inst[i].flags & BIT(IPC_FLAG_USED)))
         {
@@ -537,7 +537,7 @@ int ipc_ept_init(struct ipc_inst_t             * p_ipm,
 
     /* Notify binded endpoint. It is a part
      * of the handshake mechanism. */
-    return rpmsg_send(&p_ept->ep, (u8_t*) "", 0);
+    return rpmsg_send(&p_ept->ep, (uint8_t*) "", 0);
 }
 
 int ipc_send(struct ipc_ept_t * p_ept, const void * p_buff, size_t size)
@@ -553,7 +553,7 @@ int ipc_send(struct ipc_ept_t * p_ept, const void * p_buff, size_t size)
         return -ENOTCONN;
     }
 
-    int ret = rpmsg_send(&p_ept->ep, (u8_t*) p_buff, size);
+    int ret = rpmsg_send(&p_ept->ep, (uint8_t*) p_buff, size);
 
     if (ret == size)
     {
@@ -646,7 +646,7 @@ int ipc_recv(struct ipc_inst_t * p_ipm, void * payload)
                     /* Handle endpoint handshake*/
                     if (!(my_ep->flags & BIT(EP_FLAG_HANSHAKE_DONE)))
                     {
-                        int status = rpmsg_send(ept, (u8_t*) "", 0);
+                        int status = rpmsg_send(ept, (uint8_t*) "", 0);
                         if (status != 0)
                         {
                             return status;

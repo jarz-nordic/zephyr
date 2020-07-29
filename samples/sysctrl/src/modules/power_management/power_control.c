@@ -125,8 +125,8 @@ static void sleep_handle(const struct sleep_event *evt)
 
 	LOG_DBG("Got off, domain = %d, time = %08x%08x",
 		evt->p_msg->domain_id,
-		(u32_t)((p_req->data.time & 0xFFFFFFFF00000000) >> 32),
-		(u32_t)(p_req->data.time & 0x00000000FFFFFFFF));
+		(uint32_t)((p_req->data.time & 0xFFFFFFFF00000000) >> 32),
+		(uint32_t)(p_req->data.time & 0x00000000FFFFFFFF));
 
 	struct pm_request_sleep sleep_req;
 
@@ -151,8 +151,8 @@ static void performance_handle(struct performance_event *evt)
 {
 	LOG_DBG("Got performance, domain = %d, time = %08x%08x",
 		evt->request.domain,
-		(u32_t)((evt->request.time & 0xFFFFFFFF00000000) >> 32),
-		(u32_t)(evt->request.time & 0x00000000FFFFFFFF));
+		(uint32_t)((evt->request.time & 0xFFFFFFFF00000000) >> 32),
+		(uint32_t)(evt->request.time & 0x00000000FFFFFFFF));
 
 	/* Transform pm_request_performance into pm_request_power */
 	struct pm_request_power req = pm_pcm_performance_into_power(&evt->request);

@@ -17,7 +17,7 @@
  * Used to organize scheduled returns.
  */
 struct pm_pcm_scheduler_return {
-	u32_t            id;
+	uint32_t         id;
 	struct k_sem     semaphore;
 	struct pm_return ret;
 };
@@ -38,6 +38,6 @@ void pm_pcm_scheduler_init(void);
  * @retval -ENOMEM Unable to acquire scheduled return object.
  */
 
-int pm_pcm_scheduler_return_delayed(struct pm_return *ret, u64_t time);
+int pm_pcm_scheduler_return_delayed(struct pm_return *ret, uint64_t time);
 
 #endif /* ZEPHYR_INCLUDE_PM_PCM_SCHEDULER_H_ */

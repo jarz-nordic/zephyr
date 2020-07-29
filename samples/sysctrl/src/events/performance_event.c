@@ -17,8 +17,8 @@ static int log_performance_event(const struct event_header *eh, char *buf,
 			event->request.domain,
 			event->request.resource,
 			event->request.mode,
-			(u32_t)((event->request.time & 0xFFFFFFFF00000000) >> 32),
-			(u32_t)(event->request.time & 0x00000000FFFFFFFF));
+			(uint32_t)((event->request.time & 0xFFFFFFFF00000000) >> 32),
+			(uint32_t)(event->request.time & 0x00000000FFFFFFFF));
 }
 
 EVENT_INFO_DEFINE(performance_event,

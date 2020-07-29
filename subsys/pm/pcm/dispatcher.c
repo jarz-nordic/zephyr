@@ -19,7 +19,7 @@ static struct pm_state state_now;
 void pm_pcm_dispatcher_init(void)
 {
 	/* Set all resources to maximum mode at startup. */
-	for(u8_t i = 0; i < PM_RESOURCE_NUM; i++)
+	for(uint8_t i = 0; i < PM_RESOURCE_NUM; i++)
 	{
 		state_now.res[i] = PM_MODE_NUM - 1;
 	}
@@ -87,7 +87,7 @@ struct pm_return pm_pcm_dispatcher_traversal_request(struct pm_request_power *re
 
 	pm_request_power *new = pm_pcm_dispatcher_traversal_requirement_last_get();
 	pm_request_power *old = new->prev;
-	for (u8_t i = pm_pcm_dispatcher_traversal_requirement_len() - 1; i > 0; i--)
+	for (uint8_t i = pm_pcm_dispatcher_traversal_requirement_len() - 1; i > 0; i--)
 	{
 		u64_t time_delta = new->time - old->time;
 		struct pm_state state_before = pm_pcm_dispatcher_traversal_state_at(old->time);
