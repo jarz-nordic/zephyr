@@ -23,8 +23,6 @@ target_sources(app PRIVATE
 		src/events/led_event.c
 		src/events/gpms_event.c
 		src/events/gpms_notify_event.c
-		src/events/sleep_event.c
-		src/events/performance_event.c
 		src/events/prism_event.c
 		src/events/ld_notify_event.c
 		src/events/radio_event.c
