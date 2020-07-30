@@ -13,7 +13,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "led_event.h"
 #include "gpms_event.h"
 
-#include <nrfs_hdr.h>
+#include <internal/nrfs_hdr.h>
 
 static void filter_init(void)
 {

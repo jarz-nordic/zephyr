@@ -23,7 +23,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "pm/pcm/scheduler.h"
 #include "ncm.h"
 
-#include <nrfs_gpms.h>
+#include <internal/services/nrfs_gpms.h>
 
 static inline bool is_gpms_fault(int32_t gpms_status)
 {
