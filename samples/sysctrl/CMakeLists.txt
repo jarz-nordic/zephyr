@@ -12,6 +12,7 @@ project("SYSCTRL application")
 # Include application event headers
 zephyr_library_include_directories(src/events)
 zephyr_library_include_directories(src/modules/messaging)
+zephyr_library_include_directories(src/modules/tmr_mngr)
 
 # Application sources
 # NORDIC SDK APP START
@@ -35,5 +36,9 @@ target_sources(app PRIVATE
 		src/modules/messaging/filter.c
 		src/modules/messaging/prism_dispatcher.c
 		src/modules/messaging/ncm.c
+		src/modules/tmr_mngr/pot.c
+		src/modules/tmr_mngr/tmr_mngr.c
+		src/modules/tmr_mngr/tmr_mngr_backend.c
 )
+
 # NORDIC SDK APP END
