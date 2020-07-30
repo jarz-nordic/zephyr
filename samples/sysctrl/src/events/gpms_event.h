@@ -15,7 +15,7 @@
 
 #include "event_manager.h"
 
-#include <nrfs_phy.h>
+#include <internal/nrfs_phy.h>
 
 #ifdef __cplusplus
 extern "C" {

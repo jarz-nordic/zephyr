@@ -20,7 +20,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "radio_event.h"
 #include "ncm.h"
 
-#include <nrfs_gpms.h>
+#include <internal/services/nrfs_gpms.h>
 
 typedef struct {
 	sys_snode_t sysnode;            /* Linked list node. */

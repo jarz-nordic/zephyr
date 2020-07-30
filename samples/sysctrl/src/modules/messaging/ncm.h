@@ -13,8 +13,8 @@
  * @{
  */
 
-#include <nrfs_hdr.h>
-#include <nrfs_ctx.h>
+#include <internal/nrfs_hdr.h>
+#include <internal/nrfs_ctx.h>
 
 #ifdef __cplusplus
 extern "C" {

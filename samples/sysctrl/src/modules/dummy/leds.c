@@ -16,7 +16,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "prism_event.h"
 #include "ncm.h"
 
-#include <nrfs_led.h>
+#include <internal/services/nrfs_led.h>
 
 #define LED0 DT_GPIO_PIN(DT_ALIAS(led0), gpios)
 #define LED1 DT_GPIO_PIN(DT_ALIAS(led1), gpios)
