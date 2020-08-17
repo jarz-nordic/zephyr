@@ -51,9 +51,6 @@ static void sysctrl_evt_handler(void)
 static const prism_dispatcher_ept_t m_epts[] =
 {
 	{ PRISM_DOMAIN_APP, 0, sysctrl_evt_handler },
-	{ PRISM_DOMAIN_APP, 1, sysctrl_evt_handler },
-	{ PRISM_DOMAIN_APP, 2, sysctrl_evt_handler },
-	{ PRISM_DOMAIN_APP, 3, sysctrl_evt_handler },
 };
 
 static void reading_thread_fn(void)
