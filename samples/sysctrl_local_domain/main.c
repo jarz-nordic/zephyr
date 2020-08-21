@@ -31,6 +31,11 @@ static K_TIMER_DEFINE(m_led_timer, led_timer_expiry_fn, NULL);
 static K_SEM_DEFINE(m_sem_irq, 0, 255);
 static K_SEM_DEFINE(m_sem_tx, 0, 1);
 
+struct ncm_srv_data {
+	nrfs_hdr_t hdr;
+	nrfs_ctx_t app_ctx;
+	uint8_t app_payload[];
+} __packed;
 
 void led_timer_expiry_fn(struct k_timer *dummy)
 {
@@ -56,19 +61,31 @@ static void eptx_handler(void)
 
 	LOG_INF("[Domain: %d | Ept: %u] handler invoked.", msg.domain_id, msg.ept_id);
 	LOG_HEXDUMP_INF(msg.payload, msg.size, "Payload:");
-	nrfs_gpms_notify_t *p_data = (nrfs_gpms_notify_t *) msg.payload;
 
-	switch (p_data->data.result) {
-	case NRFS_GPMS_ERR_NONE:
-		LOG_INF("RESPONSE: SUCCESS %d", p_data->data.result);
+	const struct ncm_srv_data *p_data =
+		(const struct ncm_srv_data *) msg.payload;
+
+	uint8_t response = p_data->app_payload[0];
+
+	switch (p_data->hdr.req) {
+	case NRFS_GPMS_REQ_RADIO:
+		LOG_INF("RESPONSE: RADIO: %d", response);
 		break;
 
-	case NRFS_GPMS_ERR_NOMEM:
-		LOG_INF("RESPONSE: NO MEMORY %d", p_data->data.result);
+	case NRFS_GPMS_REQ_SLEEP:
+		LOG_INF("RESPONSE: SLEEP: %d", response);
+		break;
+
+	case NRFS_GPMS_REQ_CLK_FREQ:
+		LOG_INF("RESPONSE: CLOCK: %d", response);
+		break;
+
+	case NRFS_LED_REQ_CHANGE_STATE:
+		LOG_INF("RESPONSE: LED");
 		break;
 
 	default:
-		LOG_INF("RESPONSE: UNKNOWN %d", p_data->data.result);
+		LOG_INF("RESPONSE: UNKNOWN");
 		break;
 	}
 
@@ -91,13 +108,13 @@ static void led_service_req_generate(nrfs_led_t *p_req)
 
 static void pm_service_clock_req_generate(nrfs_gpms_clock_t *p_req,
 					  uint8_t frequency, uint64_t time,
-					  bool notify_done, void *p_context)
+					  bool do_notify, void *p_context)
 {
 	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_CLK_FREQ);
 	p_req->ctx.ctx = (uint32_t) p_context;
 	p_req->data.frequency = frequency;
 	p_req->data.time = time;
-	p_req->data.notify_done = notify_done;
+	p_req->data.do_notify = do_notify;
 }
 
 static void pm_service_sleep_req_generate(nrfs_gpms_sleep_t *p_req,
@@ -111,13 +128,13 @@ static void pm_service_sleep_req_generate(nrfs_gpms_sleep_t *p_req,
 }
 
 static void nrfs_pm_radio_request(nrfs_gpms_radio_t *p_req, uint64_t time,
-				  bool notify_done, void *p_context)
+				  bool do_notify, void *p_context)
 {
 	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_RADIO);
 	p_req->ctx.ctx = (uint32_t) p_context;
 	p_req->data.request = NRFS_RADIO_OP_ON;
 	p_req->data.time = time;
-	p_req->data.notify_done = notify_done;
+	p_req->data.do_notify = do_notify;
 }
 
 static void nrfs_pm_radio_release(nrfs_gpms_radio_t *p_req, void *p_context)
@@ -126,7 +143,7 @@ static void nrfs_pm_radio_release(nrfs_gpms_radio_t *p_req, void *p_context)
 	p_req->ctx.ctx = (uint32_t) p_context;
 	p_req->data.request = NRFS_RADIO_OP_OFF;
 	p_req->data.time = 0;
-	p_req->data.notify_done = false;
+	p_req->data.do_notify = false;
 }
 
 void txrx_thread(void *arg1, void *arg2, void *arg3)
