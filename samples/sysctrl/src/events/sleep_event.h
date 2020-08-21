@@ -23,6 +23,7 @@ extern "C" {
 struct sleep_event {
 	struct event_header header;
 	nrfs_phy_t *p_msg;
+	int32_t status;
 };
 
 EVENT_TYPE_DECLARE(sleep_event);
