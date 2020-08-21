@@ -16,6 +16,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "performance_event.h"
 #include "radio_event.h"
 #include "gpms_event.h"
+#include "gpms_notify_event.h"
 
 #include "pm/pm.h"
 #include "pm/pcm/global_off.h"
@@ -29,21 +30,17 @@ LOG_MODULE_DECLARE(MAIN);
 static struct {
 	uint32_t dummy_service_specific_data;
 	struct ncm_ctx ctx;
-} power_control_ctx[1]; // TODO: should be probably defined via Kconfig
+} power_control_ctx[1]; /* TODO: should be probably defined via Kconfig */
+
+static inline bool is_gpms_fault(int32_t gpms_status)
+{
+	return (bool) gpms_status;
+}
 
 static void power_control_init(void)
 {
 	pm_pcm_dispatcher_init();
 	pm_pcm_scheduler_init();
-}
-
-static void nrfs_gpms_notify_request(nrfs_gpms_notify_t *p_req,
-                                     uint32_t result,
-                                     void *p_context)
-{
-	NRFS_SERVICE_HDR_FILL(p_req, NRFS_GPMS_REQ_NOTIFY);
-	p_req->ctx.ctx = (uint32_t)p_context;
-	p_req->data.result = result;
 }
 
 static void power_handle(struct pm_request_power *pwr)
@@ -58,45 +55,35 @@ static void power_handle(struct pm_request_power *pwr)
 }
 
 /* @brief Function for notifying GPMS.
- * @param result Result of the operation.
- * @param p_ctx  Pointer to the context.
+ * @param p_resp    Pointer to the service response structure.
+ * @param resp_size Size of the service response structure.
+ * @param p_ctx     Pointer to the context.
+ * @param result    Result of the operation.
  * @retval 0       Notification sent with success.
  *         -ENOMEM Failed to allocate memory for the message.
  */
-static int pm_notify(uint32_t result, void *p_ctx)
+static int pm_notify(void *p_resp, size_t resp_size, uint32_t ctx, int32_t result)
 {
-	struct gpms_event *notify_evt = new_gpms_event();
-	nrfs_gpms_notify_t gpms_notify_req;
+	struct gpms_notify_event *notify_evt = new_gpms_notify_event();
 
-	nrfs_gpms_notify_request(&gpms_notify_req, result, p_ctx);
+	/* Allocate memory for the response. */
+	void *p_resp_buffer = ncm_alloc(resp_size);
 
-	/* Allocate memory for the payload. This payload is further freed in @ref ncm_free
-	 * function or in @ref gpms_req_notify_handler.
-	 * Be aware that if return code is 0 and notification is disabled,
-	 * user must manually free this memory (in @ref gpms_req_notify_handler). */
-	void *p_buffer = ncm_alloc(sizeof(nrfs_gpms_notify_data_t));
-
-	if (p_buffer == NULL) {
+	if (p_resp_buffer == NULL) {
 		/* Failed to allocate NCM memory. */
 		return -ENOMEM;
 	}
 
-	struct ncm_srv_data *payload = CONTAINER_OF(p_buffer, struct ncm_srv_data, app_payload);
+	/* Copy provided response structure to the response buffer. */
+	memcpy(p_resp_buffer, p_resp, resp_size);
 
-	/* Copy message to allocated buffer. */
-	memcpy(payload, &gpms_notify_req, sizeof(nrfs_gpms_notify_t));
+	/* Assign pointer to the response structure to the event. */
+	notify_evt->p_msg = p_resp_buffer;
+	notify_evt->msg_size = resp_size;
+	notify_evt->ctx = ctx;
+	notify_evt->status = result;
 
-	/* Allocate memory for the message. User must free this memory later on. */
-	nrfs_phy_t *p_allocated_msg = k_malloc(sizeof(nrfs_phy_t));
-
-	if (p_allocated_msg == NULL) {
-		/* Failed to allocate MSG memory. */
-		return -ENOMEM;
-	}
-
-	notify_evt->p_msg = p_allocated_msg;
-	notify_evt->p_msg->p_buffer = payload;
-
+	/* Issue the event.*/
 	EVENT_SUBMIT(notify_evt);
 
 	return 0;
@@ -104,45 +91,77 @@ static int pm_notify(uint32_t result, void *p_ctx)
 
 static void clock_handle(const struct clock_event *evt)
 {
-	nrfs_gpms_clock_t *p_req = (nrfs_gpms_clock_t *)evt->p_msg->p_buffer;
+	nrfs_gpms_clock_t *p_req = (nrfs_gpms_clock_t *) evt->p_msg->p_buffer;
+	int32_t result = 0;
 
-	/* TODO */
-	LOG_INF("CLOCK HANDLER");
-	/* Dummy response. */
-	uint32_t result = 16;
-
-	/* Operation is done. We can handle response if needed. */
-	if (pm_notify(result, (void *) p_req->ctx.ctx) != 0) {
-		__ASSERT(false, "Failed to allocate memory for the clk msg ctx.");
+	/* Check if GPMS failed or not. */
+	if (is_gpms_fault(evt->status)) {
+		/* GPMS encountered severe error. Rewrite error code
+		 * to the clock structure and return response.
+		 * Or assign other error code - TBD. */
+		result = evt->status;
+	} else {
+		/* TODO */
+		result = 5;
 	}
 
+	/* Operation is done. We can handle response if needed. */
+	nrfs_gpms_clock_rsp_data_t gpms_clock_res_data;
+	uint32_t msg_ctx = (uint32_t)p_req->ctx.ctx;
+
+	gpms_clock_res_data.response = result;
+
+	if (pm_notify(&gpms_clock_res_data,
+		      sizeof(gpms_clock_res_data),
+		      msg_ctx,
+		      result) != 0) {
+		__ASSERT(false, "Failed to allocate memory for the clock response data.");
+	}
+
+	/* Now we can release previous message, since it is not needed now.*/
 	prism_event_release(evt->p_msg);
 }
 
 static void sleep_handle(const struct sleep_event *evt)
 {
 	nrfs_gpms_sleep_t *p_req = (nrfs_gpms_sleep_t *)evt->p_msg->p_buffer;
+	int32_t result;
 
 	LOG_DBG("Got off, domain = %d, time = %08x%08x",
 		evt->p_msg->domain_id,
 		(uint32_t)((p_req->data.time & 0xFFFFFFFF00000000) >> 32),
 		(uint32_t)(p_req->data.time & 0x00000000FFFFFFFF));
 
-	struct pm_request_sleep sleep_req;
+	/* Check if GPMS failed or not. */
+	if (is_gpms_fault(evt->status)) {
+		/* GPMS encountered severe error. Rewrite error code
+		 * to the sleep structure and return response.
+		 * Or assign other error code - TBD. */
+		result = evt->status;
+	} else {
+		/* TODO */
+		struct pm_request_sleep sleep_req;
 
-	sleep_req.domain = evt->p_msg->domain_id;
-	sleep_req.state = (enum pm_sleep)p_req->data.state;
-	sleep_req.time = p_req->data.time;
-	sleep_req.latency = p_req->data.latency;
+		sleep_req.domain = evt->p_msg->domain_id;
+		sleep_req.state = (enum pm_sleep)p_req->data.state;
+		sleep_req.time = p_req->data.time;
+		sleep_req.latency = p_req->data.latency;
 
-	/* TODO */
-	LOG_INF("SLEEP HANDLER");
-	/* Dummy response. */
-	uint32_t result = 69;
+		/* Dummy response. */
+		result = 0;
+
+	}
 
 	/* Operation is done. We can handle response if needed. */
-	if (pm_notify(result, (void *) p_req->ctx.ctx) != 0) {
-		__ASSERT(false, "Failed to allocate memory for the clk msg ctx.");
+	nrfs_gpms_sleep_rsp_data_t gpms_sleep_res_data;
+	uint32_t msg_ctx = (uint32_t)p_req->ctx.ctx;
+
+	gpms_sleep_res_data.response = result;
+	if (pm_notify(&gpms_sleep_res_data,
+		      sizeof(gpms_sleep_res_data),
+		      msg_ctx,
+		      result) != 0) {
+		__ASSERT(false, "Failed to allocate memory for the sleep response data.");
 	}
 	prism_event_release(evt->p_msg);
 }
@@ -163,18 +182,32 @@ static void performance_handle(struct performance_event *evt)
 static void radio_handle(const struct radio_event *evt)
 {
 	nrfs_gpms_radio_t *p_req = (nrfs_gpms_radio_t *)evt->p_msg->p_buffer;
-	uint32_t result = 0;
+	int32_t result = 0;
 
-	/* TODO */
-	LOG_INF("RADIO HANDLER");
-
-	if (p_req->data.request != NRFS_RADIO_OP_ON) {
-		result = 1;
+	/* Check if GPMS failed or not. */
+	if (is_gpms_fault(evt->status)) {
+		/* GPMS encountered severe error. Rewrite error code
+		 * to the radio structure and return response.
+		 * Or assign other error code - TBD. */
+		result = evt->status;
+	} else {
+		/* TODO */
+		if (p_req->data.request != NRFS_RADIO_OP_ON) {
+			result = 1;
+		}
 	}
 
 	/* Operation is done. We can handle response if needed. */
-	if (pm_notify(result, (void *) p_req->ctx.ctx) != 0) {
-		__ASSERT(false, "Failed to allocate memory for the clk msg ctx.");
+	nrfs_gpms_radio_rsp_data_t gpms_radio_res_data;
+	uint32_t msg_ctx = (uint32_t)p_req->ctx.ctx;
+
+	gpms_radio_res_data.response = result;
+
+	if (pm_notify(&gpms_radio_res_data,
+		      sizeof(gpms_radio_res_data),
+		      msg_ctx,
+		      result) != 0) {
+		__ASSERT(false, "Failed to allocate memory for the radio response data.");
 	}
 
 	/* Now we can release previous message, since it is not needed now.*/
