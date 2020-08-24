@@ -1,147 +1,113 @@
 /*
- * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2019 Nordic Semiconductor ASA
  *
- * SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/types.h>
 #include <zephyr.h>
+
+#include <hal/nrf_timer.h>
+#include <hal/nrf_dppi.h>
+#include <hal/nrf_gpio.h>
+#include <hal/nrf_gpiote.h>
+
+#include <prism_dispatcher.h>
+
 #include <logging/log.h>
+LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_INF);
 
-#include <device.h>
-#include <soc.h>
+#define DPPI_PIN	23
+#define AUX_PIN		11
 
-#include <stdio.h>
-#include <string.h>
-#include <init.h>
-#include <random/rand32.h>
+#define LOCAL_DOMAIN_TIMER NRF_TIMER0
 
-#include <nrfs_led.h>
-#include <nrfs_pm.h>
+static volatile uint64_t curr_time;
 
-LOG_MODULE_REGISTER(nrf53net, CONFIG_LOG_DEFAULT_LEVEL);
-
-void tx_timer_expiry_fn(struct k_timer *dummy);
-
-static struct k_thread m_tx_thread_cb;
-static K_THREAD_STACK_DEFINE(m_tx_thread_stack, 1024);
-static K_TIMER_DEFINE(m_tx_timer, tx_timer_expiry_fn, NULL);
-static K_SEM_DEFINE(m_sem_irq, 0, 255);
-static K_SEM_DEFINE(m_sem_tx, 0, 1);
-
-void tx_timer_expiry_fn(struct k_timer *dummy)
+static void GPIOTE_IRQHandler(void *arg)
 {
-	uint32_t delay = sys_rand32_get() % 1000;
-
-	k_sem_give(&m_sem_tx);
-
-	LOG_INF("Setting TX timer delay to %d ms", delay);
-	k_timer_start(&m_tx_timer, K_MSEC(delay), K_NO_WAIT);
+	ARG_UNUSED(arg);
+	nrf_gpiote_event_clear(NRF_GPIOTE, NRF_GPIOTE_EVENT_IN_0);
+	nrf_gpiote_event_disable(NRF_GPIOTE, 0);
 }
 
-static uint32_t context_generate(void)
+static inline uint64_t get_counter(void)
 {
-	return sys_rand32_get();
+	nrf_timer_task_trigger(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_CAPTURE5);
+	return (uint64_t)nrf_timer_cc_get(LOCAL_DOMAIN_TIMER, NRF_TIMER_CC_CHANNEL5);
 }
 
-static void request_generate(void)
+void prism_irq_handler(void)
 {
-	uint32_t ctx = context_generate();
-	nrfs_err_t status;
-
-	switch (sys_rand32_get() % 3) {
-	case 0:
-		LOG_INF("LED: toggle.");
-		status = nrfs_led_state_change(NRFS_LED_OP_TOGGLE, sys_rand32_get() % 4);
-		break;
-
-	case 1:
-		if (sys_rand32_get() % 2 == 0) {
-			LOG_INF("RADIO: ON request.");
-			status = nrfs_pm_radio_request(500, true, (void *)ctx);
-		} else {
-			LOG_INF("RADIO: OFF request.");
-			status = nrfs_pm_radio_release((void *)ctx);
-		}
-		break;
-
-	case 2:
-		LOG_INF("CLOCK: request.");
-		status = nrfs_pm_cpu_clock_request(sys_rand32_get(),
-						   NRFS_GPMS_CPU_CLOCK_FREQUENCY_64_MHZ, true, (void *)ctx);
-		break;
-
-	default:
-		break;
-	}
-
-	if (status != NRFS_SUCCESS) {
-		LOG_ERR("Request send failed: %d", status);
-	}
+	LOG_INF("IPC IRQ handler invoked.");
 }
 
-void tx_thread(void *arg1, void *arg2, void *arg3)
+static void eptx_handler(void)
 {
-	while (1) {
-		k_sem_take(&m_sem_tx, K_FOREVER);
-		request_generate();
-	}
+	prism_dispatcher_msg_t msg;
+
+	prism_dispatcher_recv(&msg);
+	LOG_INF("[Domain: %d | Ept: %u] handler invoked.", msg.domain_id, msg.ept_id);
+	prism_dispatcher_free(&msg);
 }
 
-void pm_handler(nrfs_pm_evt_t evt, void *context)
+static const prism_dispatcher_ept_t m_epts[] = {
+	{ PRISM_DOMAIN_SYSCTRL, 0, eptx_handler },
+	{ PRISM_DOMAIN_SYSCTRL, 1, eptx_handler },
+	{ PRISM_DOMAIN_SYSCTRL, 2, eptx_handler },
+	{ PRISM_DOMAIN_SYSCTRL, 3, eptx_handler },
+};
+
+static void timer_channel_init(void)
 {
-	switch (evt) {
-	case NRFS_PM_EVT_NOTIFICATION:
-		LOG_INF("PM handler - notification: 0x%x", (uint32_t)context);
-		break;
-	case NRFS_PM_EVT_ERROR:
-		LOG_INF("PM handler - error: 0x%x", (uint32_t)context);
-		break;
-	case NRFS_PM_EVT_REJECT:
-		LOG_INF("PM handler - request rejected: 0x%x", (uint32_t)context);
-		break;
-	default:
-		LOG_ERR("PM handler - unexpected event: 0x%x", evt);
-		break;
-	}
+	nrf_gpio_cfg_output(AUX_PIN);
+	nrf_timer_event_clear(LOCAL_DOMAIN_TIMER, NRF_TIMER_EVENT_COMPARE0);
+	nrf_timer_int_enable(LOCAL_DOMAIN_TIMER, TIMER_INTENSET_COMPARE0_Msk);
+	nrf_timer_subscribe_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_START, 0);
+	nrf_timer_subscribe_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_CAPTURE0, 0);
+	nrf_timer_bit_width_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_BIT_WIDTH_32);
+	nrf_timer_frequency_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_FREQ_1MHz);
+	nrf_gpiote_event_configure(NRF_GPIOTE, 0, DPPI_PIN, NRF_GPIOTE_POLARITY_LOTOHI);
+	nrf_gpiote_publish_set(NRF_GPIOTE, NRF_GPIOTE_EVENT_IN_0, 0);
+	nrf_gpiote_int_enable(NRF_GPIOTE, NRF_GPIOTE_INT_IN0_MASK);
+	LOG_INF("P: %x", LOCAL_DOMAIN_TIMER->PRESCALER);
+	nrf_dppi_channels_enable(NRF_DPPIC, 1);
+
+	//IRQ_CONNECT(TIMER0_IRQn, 1, TIMER0_IRQHandler, 0, 0);
+	//irq_enable(TIMER0_IRQn);
+	nrf_gpio_pin_set(AUX_PIN);
 }
 
-void led_handler(nrfs_led_evt_t evt, void *p_buffer, size_t size)
+static void synchronize_timers(void)
 {
-	switch (evt) {
-	case NRFS_LED_EVT_NOTIFICATION:
-		LOG_HEXDUMP_INF(p_buffer, size, "LED handler - notification:");
-		break;
-	case NRFS_LED_EVT_REJECT:
-		LOG_INF("LED handler - request rejected");
-		break;
-	default:
-		LOG_ERR("LED handler - unexpected event: 0x%x", evt);
-		break;
-	}
+	nrf_gpio_pin_clear(AUX_PIN);
+	uint64_t req = 0xFFFFFFFF;
+
+	nrf_timer_task_trigger(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_STOP);
+	nrf_timer_task_trigger(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_CLEAR);
+	nrf_gpiote_event_enable(NRF_GPIOTE, 0);
+	prism_dispatcher_backdoor_xfer(&req);
+	curr_time = req;
+	nrf_gpio_pin_set(AUX_PIN);
+	LOG_INF("CTR:%u", (uint32_t)curr_time);
 }
 
-int main(void)
+void main(void)
 {
-	LOG_INF("Local domain.");
+	prism_dispatcher_err_t status;
 
-	nrfs_err_t status;
-
-	status = nrfs_pm_init(pm_handler);
-	if (status != NRFS_SUCCESS) {
-		LOG_ERR("PM service init failed: %d", status);
+	status = prism_dispatcher_init(prism_irq_handler, m_epts,
+				       ARRAY_SIZE(m_epts));
+	if (status != PRISM_DISPATCHER_OK) {
+		LOG_ERR("Dispatcher init failed: %d", status);
 	}
+	timer_channel_init();
+	LOG_INF("CLK: %x", *((uint32_t*)0x4100540C));
+	k_sleep(K_MSEC(1000));
 
-	status = nrfs_led_init(led_handler);
-	if (status != NRFS_SUCCESS) {
-		LOG_ERR("LED service init failed: %d", status);
+	synchronize_timers();
+
+	while(1) {
+		k_sleep(K_MSEC(1000));
+		synchronize_timers();
 	}
-
-	k_thread_create(&m_tx_thread_cb, m_tx_thread_stack,
-			K_THREAD_STACK_SIZEOF(m_tx_thread_stack), tx_thread, NULL, NULL,
-			NULL, 0, 0, K_NO_WAIT);
-
-	k_timer_start(&m_tx_timer, K_MSEC(10), K_NO_WAIT);
-
-	return 0;
 }
