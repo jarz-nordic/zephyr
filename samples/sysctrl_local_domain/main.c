@@ -97,15 +97,28 @@ void pm_handler(nrfs_pm_evt_t evt, void *context)
 	case NRFS_PM_EVT_ERROR:
 		LOG_INF("PM handler - error: 0x%x", (uint32_t)context);
 		break;
+	case NRFS_PM_EVT_REJECT:
+		LOG_INF("PM handler - request rejected: 0x%x", (uint32_t)context);
+		break;
 	default:
 		LOG_ERR("PM handler - unexpected event: 0x%x", evt);
 		break;
 	}
 }
 
-void led_handler(void *p_buffer, size_t size)
+void led_handler(nrfs_led_evt_t evt, void *p_buffer, size_t size)
 {
-	LOG_HEXDUMP_INF(p_buffer, size, "LED handler - notification:");
+	switch (evt) {
+	case NRFS_LED_EVT_NOTIFICATION:
+		LOG_HEXDUMP_INF(p_buffer, size, "LED handler - notification:");
+		break;
+	case NRFS_LED_EVT_REJECT:
+		LOG_INF("LED handler - request rejected");
+		break;
+	default:
+		LOG_ERR("LED handler - unexpected event: 0x%x", evt);
+		break;
+	}
 }
 
 int main(void)
