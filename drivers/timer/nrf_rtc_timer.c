@@ -166,24 +166,47 @@ static void set_protected_absolute_alarm(uint32_t cycles)
  * it by pointer at runtime, maybe?) so we don't have this leaky
  * symbol.
  */
+#if IS_ENABLED(CONFIG_RPMSG_MASTER)
+#include <hal/nrf_gpio.h>
+#include <hal/nrf_gpiote.h>
+#define MY_PIN	8
+#endif
 void rtc_nrf_isr(void *arg)
 {
 	ARG_UNUSED(arg);
-	event_clear();
+	if (nrf_rtc_event_check(RTC, NRF_RTC_EVENT_COMPARE_0)) {
+		event_clear();
+#if IS_ENABLED(CONFIG_RPMSG_MASTER)
+		nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
+#endif
+		uint32_t t = get_comparator();
+		uint32_t dticks = counter_sub(t, last_count) / CYC_PER_TICK;
 
-	uint32_t t = get_comparator();
-	uint32_t dticks = counter_sub(t, last_count) / CYC_PER_TICK;
+		last_count += dticks * CYC_PER_TICK;
 
-	last_count += dticks * CYC_PER_TICK;
+		if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
+			/* protection is not needed because we are in the RTC interrupt
+			 * so it won't get preempted by the interrupt.
+			 */
+			set_absolute_alarm(last_count + CYC_PER_TICK);
+		}
 
-	if (!IS_ENABLED(CONFIG_TICKLESS_KERNEL)) {
-		/* protection is not needed because we are in the RTC interrupt
-		 * so it won't get preempted by the interrupt.
-		 */
-		set_absolute_alarm(last_count + CYC_PER_TICK);
+		z_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : (dticks > 0));
 	}
+#if IS_ENABLED(CONFIG_RPMSG_MASTER)
+	if (nrf_rtc_event_check(RTC, NRF_RTC_EVENT_TICK)) {
+		nrf_rtc_event_disable(NRF_RTC1, NRF_RTC_INT_TICK_MASK);
+		nrf_gpio_pin_clear(MY_PIN);
+		nrf_rtc_int_disable(RTC, NRF_RTC_INT_TICK_MASK);
+		nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
 
-	z_clock_announce(IS_ENABLED(CONFIG_TICKLESS_KERNEL) ? dticks : (dticks > 0));
+
+		nrf_gpio_pin_set(MY_PIN);
+	}
+	if (nrf_rtc_event_check(NRF_RTC1, NRF_RTC_EVENT_COMPARE_1)) {
+		nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_COMPARE_1);
+	}
+#endif
 }
 
 int z_clock_driver_init(struct device *device)
@@ -192,6 +215,12 @@ int z_clock_driver_init(struct device *device)
 
 	/* TODO: replace with counter driver to access RTC */
 	nrf_rtc_prescaler_set(RTC, 0);
+#if IS_ENABLED(CONFIG_RPMSG_MASTER)
+	nrf_rtc_publish_set(RTC, NRF_RTC_EVENT_TICK, 0);
+	nrf_rtc_event_clear(RTC, NRF_RTC_EVENT_TICK);
+	//nrf_rtc_event_enable(RTC, NRF_RTC_INT_TICK_MASK);
+#endif
+
 	event_clear();
 	NVIC_ClearPendingIRQ(RTC_IRQn);
 	int_enable();
@@ -207,7 +236,10 @@ int z_clock_driver_init(struct device *device)
 	}
 
 	z_nrf_clock_control_lf_on(NRF_LFCLK_START_MODE_NOWAIT);
-
+#if IS_ENABLED(CONFIG_RPMSG_MASTER)
+	nrf_gpio_cfg_output(MY_PIN);
+	nrf_gpio_pin_set(MY_PIN);
+#endif
 	return 0;
 }
 

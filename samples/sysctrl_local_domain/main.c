@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_INF);
 
 #define DPPI_PIN	23
 #define AUX_PIN		11
+#define p_reg 		NRF_GPIOTE
 
 #define LOCAL_DOMAIN_TIMER NRF_TIMER0
 
@@ -66,10 +67,12 @@ static void timer_channel_init(void)
 	nrf_timer_subscribe_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_CAPTURE0, 0);
 	nrf_timer_bit_width_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_BIT_WIDTH_32);
 	nrf_timer_frequency_set(LOCAL_DOMAIN_TIMER, NRF_TIMER_FREQ_1MHz);
+
 	nrf_gpiote_event_configure(NRF_GPIOTE, 0, DPPI_PIN, NRF_GPIOTE_POLARITY_LOTOHI);
 	nrf_gpiote_publish_set(NRF_GPIOTE, NRF_GPIOTE_EVENT_IN_0, 0);
-	nrf_gpiote_int_enable(NRF_GPIOTE, NRF_GPIOTE_INT_IN0_MASK);
-	LOG_INF("P: %x", LOCAL_DOMAIN_TIMER->PRESCALER);
+
+	nrf_gpiote_event_enable(NRF_GPIOTE, 0);
+
 	nrf_dppi_channels_enable(NRF_DPPIC, 1);
 
 	//IRQ_CONNECT(TIMER0_IRQn, 1, TIMER0_IRQHandler, 0, 0);
@@ -85,8 +88,16 @@ static void synchronize_timers(void)
 	nrf_timer_task_trigger(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_STOP);
 	nrf_timer_task_trigger(LOCAL_DOMAIN_TIMER, NRF_TIMER_TASK_CLEAR);
 	nrf_gpiote_event_enable(NRF_GPIOTE, 0);
+
+	//SyncRequest
 	prism_dispatcher_backdoor_xfer(&req);
 	curr_time = req;
+
+
+	while(!nrf_gpiote_event_check(NRF_GPIOTE, NRF_GPIOTE_EVENT_IN_0));
+	nrf_gpio_pin_set(AUX_PIN);
+	nrf_gpiote_event_disable(NRF_GPIOTE, 0);
+	nrf_gpiote_event_clear(NRF_GPIOTE, NRF_GPIOTE_EVENT_IN_0);
 	nrf_gpio_pin_set(AUX_PIN);
 	LOG_INF("CTR:%u", (uint32_t)curr_time);
 }
@@ -101,7 +112,6 @@ void main(void)
 		LOG_ERR("Dispatcher init failed: %d", status);
 	}
 	timer_channel_init();
-	LOG_INF("CLK: %x", *((uint32_t*)0x4100540C));
 	k_sleep(K_MSEC(1000));
 
 	synchronize_timers();
