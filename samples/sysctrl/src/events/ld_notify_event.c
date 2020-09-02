@@ -8,7 +8,6 @@
 
 #include "ld_notify_event.h"
 
-
 static void profile_ld_notify_event(struct log_event_buf *buf,
 				    const struct event_header *eh)
 {
@@ -32,6 +31,6 @@ EVENT_INFO_DEFINE(ld_notify_event,
 		  profile_ld_notify_event);
 
 EVENT_TYPE_DEFINE(ld_notify_event,
-		  true,
-		  log_ld_notify_event,
-		  &ld_notify_event_info);
+		  IS_ENABLED(CONFIG_LOG) ? true : false,
+		  IS_ENABLED(CONFIG_LOG) ? log_ld_notify_event : NULL,
+		  IS_ENABLED(CONFIG_LOG) ? &ld_notify_event_info : NULL);

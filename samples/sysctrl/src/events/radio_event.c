@@ -8,7 +8,6 @@
 
 #include "radio_event.h"
 
-
 static void profile_radio_event(struct log_event_buf *buf,
                   const struct event_header *eh)
 {
@@ -32,6 +31,6 @@ EVENT_INFO_DEFINE(radio_event,
           profile_radio_event);
 
 EVENT_TYPE_DEFINE(radio_event,
-          true,
-          log_radio_event,
-          &radio_event_info);
+          IS_ENABLED(CONFIG_LOG) ? true : false,
+          IS_ENABLED(CONFIG_LOG) ? log_radio_event : NULL,
+          IS_ENABLED(CONFIG_LOG) ? &radio_event_info : NULL);

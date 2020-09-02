@@ -8,7 +8,6 @@
 
 #include "prism_event.h"
 
-
 static void profile_prism_event(struct log_event_buf *buf,
 				const struct event_header *eh)
 {
@@ -43,6 +42,6 @@ EVENT_INFO_DEFINE(prism_event,
 		  profile_prism_event);
 
 EVENT_TYPE_DEFINE(prism_event,
-		  true,
-		  log_prism_event,
-		  &prism_event_info);
+		  IS_ENABLED(CONFIG_LOG) ? true : false,
+		  IS_ENABLED(CONFIG_LOG) ? log_prism_event : NULL,
+		  IS_ENABLED(CONFIG_LOG) ? &prism_event_info : NULL);

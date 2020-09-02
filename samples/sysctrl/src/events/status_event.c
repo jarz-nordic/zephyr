@@ -30,6 +30,6 @@ EVENT_INFO_DEFINE(status_event,
 		  profile_status_event);
 
 EVENT_TYPE_DEFINE(status_event,
-		  true,
-		  log_status_event,
-		  &status_event_info);
+		  IS_ENABLED(CONFIG_LOG) ? true : false,
+		  IS_ENABLED(CONFIG_LOG) ? log_status_event : NULL,
+		  IS_ENABLED(CONFIG_LOG) ? &status_event_info : NULL);

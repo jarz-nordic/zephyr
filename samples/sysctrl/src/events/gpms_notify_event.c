@@ -8,7 +8,6 @@
 
 #include "gpms_notify_event.h"
 
-
 static void profile_gpms_notify_event(struct log_event_buf *buf,
                   const struct event_header *eh)
 {
@@ -32,6 +31,6 @@ EVENT_INFO_DEFINE(gpms_notify_event,
           profile_gpms_notify_event);
 
 EVENT_TYPE_DEFINE(gpms_notify_event,
-          true,
-          log_gpms_notify_event,
-          &gpms_notify_event_info);
+          IS_ENABLED(CONFIG_LOG) ? true : false,
+          IS_ENABLED(CONFIG_LOG) ? log_gpms_notify_event : NULL,
+          IS_ENABLED(CONFIG_LOG) ? &gpms_notify_event_info : NULL);

@@ -8,7 +8,6 @@
 
 #include "led_event.h"
 
-
 static void profile_led_event(struct log_event_buf *buf,
 			      const struct event_header *eh)
 {
@@ -32,6 +31,6 @@ EVENT_INFO_DEFINE(led_event,
 		  profile_led_event);
 
 EVENT_TYPE_DEFINE(led_event,
-		  true,
-		  log_led_event,
-		  &led_event_info);
+		  IS_ENABLED(CONFIG_LOG) ? true : false,
+		  IS_ENABLED(CONFIG_LOG) ? log_led_event : NULL,
+		  IS_ENABLED(CONFIG_LOG) ? &led_event_info : NULL);
