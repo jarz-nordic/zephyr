@@ -14,7 +14,7 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(PM_PCM_SCHEDULER, 4);
 
-#define PM_PCM_SCHEDULER_RETURN_NUM 255 /*TODO: move to pm.h ?*/
+#define PM_PCM_SCHEDULER_RETURN_NUM 1 /*TODO: move to pm.h ?*/
 
 static struct pm_pcm_scheduler_return scheduled_list[PM_PCM_SCHEDULER_RETURN_NUM];
 
