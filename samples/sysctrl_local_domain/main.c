@@ -24,6 +24,16 @@ LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_INF);
 
 static volatile uint64_t curr_time;
 
+static int HFCLK_init(struct device *dev)
+{
+	ARG_UNUSED(dev);
+	nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_HFCLKSTARTED);
+	nrf_clock_task_trigger(NRF_CLOCK, NRF_CLOCK_TASK_HFCLKSTART);
+	while (!nrf_clock_hf_is_running(NRF_CLOCK, NRF_CLOCK_HFCLK_HIGH_ACCURACY)) {};
+	return 0;
+}
+SYS_INIT(HFCLK_init, PRE_KERNEL_1, 0);
+
 static void GPIOTE_IRQHandler(void *arg)
 {
 	ARG_UNUSED(arg);
