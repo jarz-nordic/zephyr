@@ -7,10 +7,25 @@
 #include <zephyr.h>
 
 #include <hal/nrf_timer.h>
+#define USE_GPIOTE_NRFX 1
+#define USE_GPIOTE_HAL 0
+
+
+#if USE_GPIOTE_NRFX
+#include <nrfx_dppi.h>
+#include <nrfx_gpiote.h>
+#elif USE_GPIOTE_HAL
 #include <hal/nrf_dppi.h>
-#include <hal/nrf_gpio.h>
 #include <hal/nrf_gpiote.h>
+#endif
+
+#include <hal/nrf_gpio.h>
+
+
 #include <hal/nrf_rtc.h>
+#include <hal/nrf_clock.h>
+#include <device.h>
+#include <init.h>
 
 #include <prism_dispatcher.h>
 #include <event_manager.h>
@@ -40,7 +55,11 @@ SYS_INIT(HFCLK_init, PRE_KERNEL_1, 0);
 
 static void backdoor_cb(uint64_t *value)
 {
+#if USE_GPIOTE_NRFX
+	nrfx_gpiote_out_task_enable(DPPI_PIN);
+#elif USE_GPIOTE_HAL
 	nrf_gpiote_task_enable(NRF_GPIOTE0, 0);
+#endif
 	nrf_gpio_pin_clear(AUX_PIN);
 	uint64_t now = (uint64_t)nrf_rtc_counter_get(NRF_RTC1) + 1;
 	nrf_rtc_event_clear(NRF_RTC1, NRF_RTC_EVENT_TICK);
@@ -61,16 +80,61 @@ static void backdoor_cb(uint64_t *value)
 
 static void timer_channel_init(void)
 {
-	nrf_dppi_channels_disable_all(NRF_DPPIC);
+	nrfx_err_t err;
+
 	nrf_gpio_cfg_output(AUX_PIN);
 	nrf_gpio_pin_set(AUX_PIN);
+
+#if USE_GPIOTE_NRFX
+	/* Initialize GPIOTE (the interrupt priority passed as the parameter
+	 * here is ignored, see nrfx_glue.h).
+	 */
+	err = nrfx_gpiote_init(0);
+	if (err != NRFX_SUCCESS) {
+		LOG_ERR("nrfx_gpiote_init error: %08x", err);
+		return;
+	}
+	nrfx_gpiote_out_config_t const out_config = {
+		.action = GPIOTE_CONFIG_POLARITY_LoToHi,
+		.init_state = 0,
+		.task_pin = true,
+	};
+	err = nrfx_gpiote_out_init(DPPI_PIN, &out_config);
+	if (err != NRFX_SUCCESS) {
+		LOG_ERR("nrfx_gpiote_out_init error: %08x", err);
+		return;
+	}
+
+	/* Initialize DPPI channel */
+	uint8_t channel;
+
+	err = nrfx_dppi_channel_alloc(&channel);
+	if (err != NRFX_SUCCESS) {
+		LOG_ERR("nrfx_dppi_channel_alloc error: %08x", err);
+		return;
+	}
+
+	nrf_gpiote_subscribe_set(
+		NRF_GPIOTE,
+		nrfx_gpiote_out_task_get(DPPI_PIN),
+		channel);
+
+	/* Enable DPPI channel */
+	err = nrfx_dppi_channel_enable(channel);
+	if (err != NRFX_SUCCESS) {
+		LOG_ERR("nrfx_dppi_channel_enable error: %08x", err);
+		return;
+	}
+	nrf_rtc_publish_set(NRF_RTC1, NRF_RTC_EVENT_TICK, channel);
+#elif USE_GPIOTE_HAL
 
 	nrf_gpiote_task_disable(NRF_GPIOTE0, 0);
 	nrf_gpiote_subscribe_set(NRF_GPIOTE0, NRF_GPIOTE_TASK_SET_0, 0);
 	nrf_gpiote_task_configure(NRF_GPIOTE0, 0, DPPI_PIN, GPIOTE_CONFIG_POLARITY_LoToHi, NRF_GPIOTE_INITIAL_VALUE_LOW);
 	nrf_gpiote_task_enable(NRF_GPIOTE0, 0);
-
+	nrf_rtc_publish_set(NRF_RTC1, NRF_RTC_EVENT_TICK, 0);
 	nrf_dppi_channels_enable(NRF_DPPIC, 1);
+#endif
 
 	nrf_gpio_pin_mcu_select(11, NRF_GPIO_PIN_MCUSEL_NETWORK);
 	nrf_gpio_pin_mcu_select(23, NRF_GPIO_PIN_MCUSEL_NETWORK);

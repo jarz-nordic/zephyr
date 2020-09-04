@@ -216,7 +216,6 @@ int z_clock_driver_init(struct device *device)
 	/* TODO: replace with counter driver to access RTC */
 	nrf_rtc_prescaler_set(RTC, 0);
 #if IS_ENABLED(CONFIG_RPMSG_MASTER)
-	nrf_rtc_publish_set(RTC, NRF_RTC_EVENT_TICK, 0);
 	nrf_rtc_event_clear(RTC, NRF_RTC_EVENT_TICK);
 	//nrf_rtc_event_enable(RTC, NRF_RTC_INT_TICK_MASK);
 #endif
