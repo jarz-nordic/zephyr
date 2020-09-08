@@ -1,0 +1,26 @@
+# Copyright (c) 2020 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: Nordic PMGT Consumer mode requirement
+
+compatible: "nordic,nrf-pmgt-mode-req"
+
+include: base.yaml
+
+properties:
+    min_volt:
+        required: true
+        type: int
+        description: Minimum voltage supported in mV.
+    max_volt:
+        required: true
+        type: int
+        description: Maximum voltage supported in mV.
+    clean:
+        required: false
+        type: boolean
+        description: Is the voltage required to be clean.
+    rail:
+        required: true
+        type: phandle
+        description: Node of rail that this requirement concerns.

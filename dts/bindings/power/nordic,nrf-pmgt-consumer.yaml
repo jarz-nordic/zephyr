@@ -1,0 +1,15 @@
+# Copyright (c) 2020 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: Nordic PMGT Consumer
+
+compatible: "nordic,nrf-pmgt-consumer"
+
+include: base.yaml
+
+properties:
+    parents:
+        required: true
+        type: phandles
+        description: Parents to which consumer is connected.
+

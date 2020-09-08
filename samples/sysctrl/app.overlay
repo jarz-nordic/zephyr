@@ -1,0 +1,168 @@
+/ {
+	regulators {
+
+		hvbuck_simo {
+
+			compatible = "nordic,nrf-pmgt-reg";
+
+			clean;
+			parents   = <&vdd_ao_5v0>;
+
+			outputs {
+
+				hvbuck_simo_ao_1v8 {
+					compatible = "nordic,nrf-pmgt-reg-out";
+					min_volt   = <1710>;
+					max_volt   = <1980>;
+					efficiency = <80>;
+					drop	   = <50>;
+					rail	   = <&vdd_ao_1v8>;
+					time_comm  = <12>;
+					time_alpha = <89>;
+					/* time to change voltage = time_comm + (deltaV * time_alpha) */
+				};
+
+				hvbuck_simo_1v0 {
+					compatible = "nordic,nrf-pmgt-reg-out";
+					min_volt   = <620>;
+					max_volt   = <1400>;
+					efficiency = <80>;
+					drop	   = <60>;
+					rail	   = <&vdd_1v0>;
+					time_comm  = <12>;
+					time_alpha = <90>;
+				};
+
+				hvbuck_simo_vs_0v8 {
+					compatible = "nordic,nrf-pmgt-reg-out";
+					min_volt   = <450>;
+					max_volt   = <840>;
+					efficiency = <80>;
+					drop	   = <70>;
+					rail	   = <&vdd_vs_0v8>;
+					time_comm  = <12>;
+					time_alpha = <78>;
+				};
+
+			};
+
+
+		};
+
+		external_ao_5v0 {
+			compatible = "nordic,nrf-pmgt-reg";
+			parents	= <>;
+
+			outputs {
+				external_ao_5v0_ao_5v0 {
+					compatible = "nordic,nrf-pmgt-reg-out";
+					min_volt   = <0>;
+					max_volt   = <5000>;
+					efficiency = <100>;
+					drop	   = <0>;
+					rail	   = <&vdd_ao_5v0>;
+					time_comm  = <12>;
+					time_alpha = <89>;
+					/* time to change voltage = time_comm + (deltaV * time_alpha) */
+				};
+			};
+		};
+
+		/* ... other regulators ... */
+
+	};
+
+	rails {
+		vdd_ao_5v0: vdd_ao_5v0 {
+			compatible = "nordic,nrf-pmgt-rail";
+			volt = <5000>;
+			parents = <>;
+		};
+
+		external_ao_1v8: external_ao_1v8 {
+			compatible = "nordic,nrf-pmgt-rail";
+			volt = <1800>;
+			parents = <>;
+		};
+
+		vdd_ao_1v8: vdd_ao_1v8 {
+			compatible = "nordic,nrf-pmgt-rail";
+			volt = <1800>;
+			parents = <&external_ao_1v8>;
+		};
+
+		vdd_1v0: vdd_1v0 {
+			compatible = "nordic,nrf-pmgt-rail";
+			volt = <1000>;
+			parents = <>;
+		};
+
+		vdd_vs_0v8: vdd_vs_0v8 {
+			compatible = "nordic,nrf-pmgt-rail";
+			volt = <800>;
+			parents = <>;
+		};
+
+		/* ... other rails ... */
+	};
+
+
+	consumers {
+
+		app_core {
+			compatible = "nordic,nrf-pmgt-consumer";
+			parents    = <&vdd_vs_0v8>;
+
+			modes {
+
+				/* OFF is implied */
+
+				64MHZ {
+					time	 = <234>;
+					requirements {
+						requirement {
+							compatible = "nordic,nrf-pmgt-mode-req";
+							min_volt  = <450>;
+							max_volt  = <840>;
+							rail	  = <&vdd_vs_0v8>;
+						};
+					};
+
+				};
+
+				128MHZ {
+					time	 = <456>;
+					requirements {
+						requirement {
+							compatible = "nordic,nrf-pmgt-mode-req";
+							min_volt  = <600>;
+							max_volt  = <840>;
+							rail	  = <&vdd_vs_0v8>;
+						};
+					};
+
+				};
+
+				256MHZ {
+					time	 = <789>;
+					requirements {
+						requirement {
+							compatible = "nordic,nrf-pmgt-mode-req";
+							min_volt  = <800>;
+							max_volt  = <840>;
+							rail	  = <&vdd_vs_0v8>;
+						};
+					};
+
+				};
+
+			};
+
+		};
+
+		/* ... other cores ... */
+
+	};
+
+};
+

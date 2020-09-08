@@ -1,0 +1,18 @@
+# Copyright (c) 2020 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: Nordic PMGT power rail
+
+compatible: "nordic,nrf-pmgt-rail"
+
+include: base.yaml
+
+properties:
+    volt:
+        required: true
+        type: int
+        description: Nominal voltage in mV.
+    parents:
+        required: true
+        type: phandles
+        description: Parents to which rail is connected.

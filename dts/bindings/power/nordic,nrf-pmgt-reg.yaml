@@ -1,0 +1,20 @@
+# Copyright (c) 2020 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: Nordic PMGT Regulator
+
+compatible: "nordic,nrf-pmgt-reg"
+
+include: base.yaml
+
+properties:
+    parents:
+        required: false
+        type: phandles
+        description: Parents to which regulator is connected.
+    clean:
+        required: false
+        type: boolean
+        description: Is voltage provided by regulator clean.
+        
+

@@ -1,0 +1,43 @@
+# Copyright (c) 2020 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: Nordic PMGT Regulator output
+
+compatible: "nordic,nrf-pmgt-reg-out"
+
+include: base.yaml
+
+properties:
+    min_volt:
+        required: true
+        type: int
+        description: Minimum voltage generated in mV.
+    max_volt:
+        required: true
+        type: int
+        description: Maximum voltage generated in mV.
+    efficiency:
+        required: true
+        type: int
+        description: Mode efficiency in %.
+    drop:
+        required: true
+        type: int
+        description: Voltage drop in mV.
+    time_comm:
+        required: true
+        type: int
+        description: Base time required to change voltage in us.
+    time_alpha:
+        required: true
+        type: int
+        description: Time required for voltage change dependent on voltage delta in us.
+                     Total time to change voltage = time_comm + (deltaV * time_alpha) 
+    bypass:
+        required: false
+        type: boolean
+        description: Is this output a bypass.
+    rail:
+        required: true
+        type: phandle
+        description: Node of rail connected to this output.
