@@ -34,6 +34,7 @@ target_sources(app PRIVATE
 		src/modules/dummy/leds.c
 		src/modules/power_management/gpms.c
 		src/modules/power_management/power_control.c
+		src/modules/power_management/clock_control.c
 		src/modules/messaging/filter.c
 		src/modules/messaging/prism_dispatcher.c
 		src/modules/messaging/ncm.c

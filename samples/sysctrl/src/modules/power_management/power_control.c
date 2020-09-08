@@ -71,37 +71,22 @@ static int pm_notify(void *p_resp, size_t resp_size, uint32_t ctx, int32_t resul
 	return 0;
 }
 
-static void clock_handle(const struct clock_event *evt)
+static void clock_power_handle(const struct clock_power_event *evt)
 {
-	nrfs_gpms_clock_t *p_req = (nrfs_gpms_clock_t *) evt->p_msg->p_buffer;
-	int32_t result = 0;
+	nrfs_gpms_clock_t *p_req = (nrfs_gpms_clock_t *)evt->p_msg->p_buffer;
 
-	/* Check if GPMS failed or not. */
-	if (is_gpms_fault(evt->status)) {
-		/* GPMS encountered severe error. Rewrite error code
-		 * to the clock structure and return response.
-		 * Or assign other error code - TBD. */
-		result = evt->status;
-	} else {
-		/* TODO */
-		result = 5;
-	}
+	/* TODO */
+	static int cnt = 0;
+	LOG_INF("CLOCK POWER HANDLER %d", cnt++);
+	/* Dummy response. */
+	uint32_t result = 16;
 
-	/* Operation is done. We can handle response if needed. */
-	nrfs_gpms_clock_rsp_data_t gpms_clock_res_data;
-	uint32_t msg_ctx = (uint32_t)p_req->ctx.ctx;
 
-	gpms_clock_res_data.response = result;
+	struct clock_done_event *clk_done = new_clock_done_event();
+	clk_done->p_msg = evt->p_msg;
 
-	if (pm_notify(&gpms_clock_res_data,
-		      sizeof(gpms_clock_res_data),
-		      msg_ctx,
-		      result) != 0) {
-		__ASSERT(false, "Failed to allocate memory for the clock response data.");
-	}
+	EVENT_SUBMIT(clk_done);
 
-	/* Now we can release previous message, since it is not needed now.*/
-	prism_event_release(evt->p_msg);
 }
 
 static void radio_handle(const struct radio_event *evt)
@@ -151,10 +136,10 @@ static bool event_handler(const struct event_header *eh)
 		return false;
 	}
 
-	if (is_clock_event(eh)) {
-		const struct clock_event *evt = cast_clock_event(eh);
+	if (is_clock_power_event(eh)) {
+		const struct clock_power_event *evt = cast_clock_power_event(eh);
 
-		clock_handle(evt);
+		clock_power_handle(evt);
 		return true;
 	}
 
@@ -172,5 +157,5 @@ static bool event_handler(const struct event_header *eh)
 
 EVENT_LISTENER(POWER_CONTROL, event_handler);
 EVENT_SUBSCRIBE(POWER_CONTROL, status_event);
-EVENT_SUBSCRIBE(POWER_CONTROL, clock_event);
+EVENT_SUBSCRIBE(POWER_CONTROL, clock_power_event);
 EVENT_SUBSCRIBE(POWER_CONTROL, radio_event);

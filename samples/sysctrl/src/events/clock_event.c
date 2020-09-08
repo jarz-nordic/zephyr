@@ -34,3 +34,49 @@ EVENT_TYPE_DEFINE(clock_event,
           IS_ENABLED(CONFIG_LOG) ? true : false,
           IS_ENABLED(CONFIG_LOG) ? log_clock_event : NULL,
           IS_ENABLED(CONFIG_LOG) ? &clock_event_info : NULL);
+
+static void profile_clock_power_event(struct log_event_buf *buf,
+                  const struct event_header *eh)
+{
+    struct clock_power_event *event = cast_clock_power_event(eh);
+
+    ARG_UNUSED(event);
+    profiler_log_encode_u32(buf, event->p_msg->domain_id);
+}
+
+static int log_clock_power_event(const struct event_header *eh, char *buf,
+             size_t buf_len)
+{
+    struct clock_power_event *event = cast_clock_power_event(eh);
+
+    return snprintf(buf, buf_len, "domain=%d", event->p_msg->domain_id);
+}
+
+EVENT_INFO_DEFINE(clock_power_event,
+          ENCODE(PROFILER_ARG_U8),
+          ENCODE("domain"),
+          profile_clock_power_event);
+
+EVENT_TYPE_DEFINE(clock_power_event,
+	  IS_ENABLED(CONFIG_LOG) ? true : false,
+	  IS_ENABLED(CONFIG_LOG) ? log_clock_power_event : NULL,
+	  IS_ENABLED(CONFIG_LOG) ? &clock_power_event_info : NULL);
+
+
+static int log_clock_done_event(const struct event_header *eh, char *buf,
+             size_t buf_len)
+{
+    struct clock_done_event *event = cast_clock_done_event(eh);
+
+    return snprintf(buf, buf_len, "domain=%d", event->p_msg->domain_id);
+}
+
+EVENT_INFO_DEFINE(clock_done_event,
+          ENCODE(PROFILER_ARG_U8),
+          ENCODE("domain"),
+          NULL);
+
+EVENT_TYPE_DEFINE(clock_done_event,
+	  IS_ENABLED(CONFIG_LOG) ? true : false,
+	  IS_ENABLED(CONFIG_LOG) ? log_clock_done_event : NULL,
+	  IS_ENABLED(CONFIG_LOG) ? &clock_done_event_info : NULL);

@@ -16,6 +16,7 @@
 #include "event_manager.h"
 
 #include <internal/nrfs_phy.h>
+#include <internal/services/nrfs_gpms.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +29,20 @@ struct clock_event {
 };
 
 EVENT_TYPE_DECLARE(clock_event);
+
+struct clock_power_event {
+    struct event_header header;
+    nrfs_phy_t *p_msg;
+};
+
+EVENT_TYPE_DECLARE(clock_power_event);
+
+struct clock_done_event {
+    struct event_header header;
+    nrfs_phy_t *p_msg;
+};
+
+EVENT_TYPE_DECLARE(clock_done_event);
 
 #ifdef __cplusplus
 }
