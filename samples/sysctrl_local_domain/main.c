@@ -28,6 +28,11 @@
 
 #include <prism_dispatcher.h>
 
+#include <nrfx_ipc.h>
+#include <hal/nrf_ipc.h>
+
+#include <drivers/ipm.h>
+
 #include <logging/log.h>
 LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_INF);
 
@@ -236,12 +241,34 @@ static void synchronize_timers(void)
 	LOG_INF("ST:%u\r\n%u\r\n%u", (uint32_t)get_current_time(), (uint32_t)get_last_sync_value(), (uint32_t)time_base);
 }
 
+static volatile bool event_arrived;
+
+/* Callback called when Local Domain gets IPC signal from SysCtrl. */
+void ipm_handler(void *context, uint32_t id, volatile void *data)
+{
+	ARG_UNUSED(context);
+	ARG_UNUSED(id);
+	ARG_UNUSED(data);
+
+	event_arrived = true;
+}
+
+void ipm_callback_configure(void)
+{
+	static struct device *ipm_rx_handle;
+
+	ipm_rx_handle = device_get_binding("IPM_2");
+	ipm_register_callback(ipm_rx_handle, ipm_handler, NULL);
+	ipm_set_enabled(ipm_rx_handle, 1);
+}
+
 void main(void)
 {
 	prism_dispatcher_err_t status;
 
 	status = prism_dispatcher_init(prism_irq_handler, m_epts,
 				       ARRAY_SIZE(m_epts));
+
 	if (status != PRISM_DISPATCHER_OK) {
 		LOG_ERR("Dispatcher init failed: %d", status);
 	}
@@ -252,9 +279,16 @@ void main(void)
 	uint64_t ct = get_current_time();
 	uint32_t i = 0;
 
+
+	int cnt = 0;
+
+	ipm_callback_configure();
+
 	while(1) {
 		k_sleep(K_MSEC(1000));
-		LOG_INF("T:%u\r\n%u", (uint32_t)get_current_time(), get_counter());
+		LOG_INF("T:%u\r\n%u\nIPC event_arrived: %s\n",
+			(uint32_t)get_current_time(), get_counter(),
+			event_arrived ? "true" : "false");
 		if (i < 2) synchronize_timers();
 		i++;
 		/*ct = get_current_time();

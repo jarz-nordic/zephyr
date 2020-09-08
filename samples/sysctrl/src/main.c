@@ -21,6 +21,8 @@
 
 #include <hal/nrf_gpio.h>
 
+#include <nrfx_ipc.h>
+#include <hal/nrf_ipc.h>
 
 #include <hal/nrf_rtc.h>
 #include <hal/nrf_clock.h>
@@ -78,6 +80,21 @@ static void backdoor_cb(uint64_t *value)
 	trg = true;
 }
 
+/* Function transfers dppi event using reserved IPC channel: 2 to the local
+ * local domain.
+ */
+static void ipc_channel_assign(uint8_t dppi_channel)
+{
+	static const uint8_t send_idx = 2;
+	static const uint8_t channel_index = 2;
+
+	nrfx_ipc_send_task_channel_assign(send_idx, channel_index);
+	nrf_ipc_subscribe_set(
+		NRF_IPC,
+		NRF_IPC_TASK_SEND_2,
+		dppi_channel);
+}
+
 static void timer_channel_init(void)
 {
 	nrfx_err_t err;
@@ -105,6 +122,7 @@ static void timer_channel_init(void)
 		return;
 	}
 
+
 	/* Initialize DPPI channel */
 	uint8_t channel;
 
@@ -118,6 +136,8 @@ static void timer_channel_init(void)
 		NRF_GPIOTE,
 		nrfx_gpiote_out_task_get(DPPI_PIN),
 		channel);
+
+	ipc_channel_assign(channel);
 
 	/* Enable DPPI channel */
 	err = nrfx_dppi_channel_enable(channel);
@@ -139,6 +159,7 @@ static void timer_channel_init(void)
 	nrf_gpio_pin_mcu_select(11, NRF_GPIO_PIN_MCUSEL_NETWORK);
 	nrf_gpio_pin_mcu_select(23, NRF_GPIO_PIN_MCUSEL_NETWORK);
 }
+
 
 void main(void)
 {
