@@ -146,7 +146,7 @@ config ALTERA_AVALON_TIMER
 	  standard "system clock driver" interfaces.
 
 config NRF_RTC_TIMER
-	bool "nRF Real Time Counter (NRF_RTC1) Timer"
+	bool
 	depends on CLOCK_CONTROL
 	depends on SOC_COMPATIBLE_NRF
 	select TICKLESS_CAPABLE
@@ -190,6 +190,26 @@ config SYSTEM_CLOCK_WAIT_FOR_STABILITY
 endchoice
 
 endif # NRF_RTC_TIMER
+
+choice
+	prompt "NRF Time source for Zephyr"
+	default NRF_TIME_SOURCE_RTC1
+	depends on CLOCK_CONTROL
+	depends on SOC_COMPATIBLE_NRF
+	help
+	  This module implements a kernel device driver for the nRF Real Time
+	  Counter NRF_RTC1 and NRF_TIMER0, and provides the standard
+	  "system clock driver" interfaces.
+
+config NRF_TIME_SOURCE_RTC1
+	bool "nRF Real Time Counter (NRF_RTC1) Timer"
+	select NRF_RTC_TIMER
+
+config NRF_TIME_SOURCE_TIMER0
+	bool"nRF Timer0"
+	select TICKLESS_CAPABLE
+
+endchoice
 
 source "drivers/timer/Kconfig.stm32_lptim"
 
