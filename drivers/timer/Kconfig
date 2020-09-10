@@ -146,7 +146,7 @@ config ALTERA_AVALON_TIMER
 	  standard "system clock driver" interfaces.
 
 config NRF_RTC_TIMER
-	bool
+	bool "nRF Real Time Counter (NRF_RTC1) Timer"
 	depends on CLOCK_CONTROL
 	depends on SOC_COMPATIBLE_NRF
 	select TICKLESS_CAPABLE
@@ -203,13 +203,16 @@ choice
 
 config NRF_TIME_SOURCE_RTC1
 	bool "nRF Real Time Counter (NRF_RTC1) Timer"
-	select NRF_RTC_TIMER
 
 config NRF_TIME_SOURCE_TIMER0
-	bool"nRF Timer0"
-	select TICKLESS_CAPABLE
+	bool "NRF_TIMER0"
 
 endchoice
+
+config NRF_SYSTEM_TIMER_FREQUENCY_HZ
+    int "Frequency of system timer"
+    default 16000000 if NRF_TIME_SOURCE_TIMER0
+    default 32768
 
 source "drivers/timer/Kconfig.stm32_lptim"
 
