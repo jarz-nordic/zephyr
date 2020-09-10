@@ -21,10 +21,8 @@ manifest:
   remotes:
     - name: upstream
       url-base: https://github.com/zephyrproject-rtos
-    - name: prism-dispatcher-dev
-      url-base: ssh://git@bitbucket.nordicsemi.no:7999/~nika
-    - name: nrfs-dev
-      url-base: ssh://git@bitbucket.nordicsemi.no:7999/~nika
+    - name: haltium-project
+      url-base: ssh://git@bitbucket.nordicsemi.no:7999/haltium
 
   #
   # Please add items below based on alphabetical order
@@ -146,11 +144,11 @@ manifest:
       revision: bb15a511a509c81135af61e02f9f4bfaf86d7fde
     - name: prism-dispatcher
       path: modules/lib/prism-dispatcher
-      remote: prism-dispatcher-dev
-      revision: e3ad3cbf0f7cbf488ced1b62b779c63430c5b5c5
+      remote: haltium-project
+      revision: master-zephyr
     - name: nrfs
       path: modules/lib/nrfs
-      remote: nrfs-dev
+      remote: haltium-project
       revision: master-zephyr
 
   self:
