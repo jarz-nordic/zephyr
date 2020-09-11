@@ -9,6 +9,15 @@
 
 #include <zephyr.h>
 
+#define NCM_SLAB_BLOCK_SIZE  (16)               /* Single block size. */
+#define NCM_SLAB_BLOCK_CNT   (4)                /* Block count. */
+#define NCM_SLAB_BLOCK_ALIGN (4)                /* Block alignment. */
+
+K_MEM_SLAB_DEFINE(ncm_slab,
+		  NCM_SLAB_BLOCK_SIZE,
+		  NCM_SLAB_BLOCK_CNT,
+		  NCM_SLAB_BLOCK_ALIGN);
+
 void ncm_fill(struct ncm_ctx *p_ctx, nrfs_phy_t *p_msg)
 {
 	struct ncm_srv_data *p_data = (struct ncm_srv_data *)p_msg->p_buffer;
@@ -26,7 +35,12 @@ uint32_t ncm_req_id_get(struct ncm_ctx *p_ctx)
 
 void *ncm_alloc(size_t bytes)
 {
-	struct ncm_srv_data *payload = k_malloc(bytes + sizeof(struct ncm_srv_data));
+	ARG_UNUSED(bytes);
+	struct ncm_srv_data *payload = NULL;
+
+	__ASSERT(bytes <= NCM_SLAB_BLOCK_SIZE,
+		 "Requested memory size greater than available.");
+	k_mem_slab_alloc(&ncm_slab, (void **)&payload, K_NO_WAIT);
 
 	__ASSERT_NO_MSG(payload);
 
@@ -42,6 +56,7 @@ void ncm_notify(struct ncm_ctx *p_ctx, void *app_payload, size_t size)
 	payload->app_ctx = p_ctx->app_ctx;
 
 	struct ld_notify_event *ld_notify_evt = new_ld_notify_event();
+
 	ld_notify_evt->msg.p_buffer = payload;
 	ld_notify_evt->msg.size = size + sizeof(struct ncm_srv_data);
 	ld_notify_evt->msg.domain_id = p_ctx->domain_id;
@@ -52,5 +67,5 @@ void ncm_notify(struct ncm_ctx *p_ctx, void *app_payload, size_t size)
 
 void ncm_free(void *payload)
 {
-	k_free(payload);
+	k_mem_slab_free(&ncm_slab, &payload);
 }
