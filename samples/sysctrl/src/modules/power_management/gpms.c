@@ -22,6 +22,15 @@ LOG_MODULE_DECLARE(MAIN);
 
 #include <internal/services/nrfs_gpms.h>
 
+#define GPMS_SLAB_BLOCK_SIZE  (16)              /* Single block size. */
+#define GPMS_SLAB_BLOCK_CNT   (4)               /* Block count. */
+#define GPMS_SLAB_BLOCK_ALIGN (4)               /* Block alignment. */
+
+K_MEM_SLAB_DEFINE(gpms_slab,
+		  GPMS_SLAB_BLOCK_SIZE,
+		  GPMS_SLAB_BLOCK_CNT,
+		  GPMS_SLAB_BLOCK_ALIGN);
+
 typedef struct {
 	sys_snode_t sysnode;            /* Linked list node. */
 	struct ncm_ctx ctx_local;       /* Local context. Used to handle responses. */
@@ -56,7 +65,10 @@ static int gpms_notify_ctx_save(const struct gpms_event *p_evt,
 				uint32_t *p_context, bool notify_req)
 {
 	int result = 0;
-	node_ctx_t *p_node_ctx = k_malloc(sizeof(node_ctx_t));
+
+	node_ctx_t *p_node_ctx = NULL;
+
+	k_mem_slab_alloc(&gpms_slab, (void **) &p_node_ctx, K_NO_WAIT);
 
 	if (p_node_ctx == NULL) {
 		/* There is not enough memory to allocate NCM context.
@@ -88,7 +100,7 @@ static void gpms_notify_ctx_remove(node_ctx_t *p_node_ctx)
 {
 	sys_slist_find_and_remove(&slist, &p_node_ctx->sysnode);
 	if (!p_node_ctx->is_statically_allocated) {
-		k_free(p_node_ctx);
+		k_mem_slab_free(&gpms_slab, (void **) &p_node_ctx);
 	}
 }
 
@@ -107,7 +119,7 @@ static void gpms_notification_handler(const struct gpms_notify_event *evt)
 	if (is_notification_needed) {
 		/* Send notification to the local domain. */
 		ncm_notify(&p_node_ctx->ctx_local, evt->p_msg, evt->msg_size);
-	} else   {
+	} else {
 		/* Notification is not needed. Free the NCM context. */
 		struct ncm_srv_data *p_data = CONTAINER_OF(evt->p_msg, struct ncm_srv_data, app_payload);
 
