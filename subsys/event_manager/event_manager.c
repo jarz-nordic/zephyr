@@ -13,6 +13,14 @@
 
 LOG_MODULE_REGISTER(event_manager, CONFIG_DESKTOP_EVENT_MANAGER_LOG_LEVEL);
 
+#define EVTM_SLAB_BLOCK_SIZE  (32)              /* Single block size. */
+#define EVTM_SLAB_BLOCK_CNT   (4)               /* Block count. */
+#define EVTM_SLAB_BLOCK_ALIGN (4)               /* Block alignment. */
+
+K_MEM_SLAB_DEFINE(evt_slab,
+                  EVTM_SLAB_BLOCK_SIZE,
+                  EVTM_SLAB_BLOCK_CNT,
+                  EVTM_SLAB_BLOCK_ALIGN);
 
 static void event_processor_fn(struct k_work *work);
 
@@ -278,7 +286,7 @@ static void event_processor_fn(struct k_work *work)
 
 		trace_event_execution(eh, false);
 
-		k_free(eh);
+		k_mem_slab_free(&evt_slab, (void **)&eh);
 	}
 }
 

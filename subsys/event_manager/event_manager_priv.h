@@ -16,6 +16,7 @@
 extern "C" {
 #endif
 
+extern struct k_mem_slab evt_slab;
 
 /* There are 3 levels of priorities defining an order at which event listeners
  * are notified about incoming events.
@@ -89,7 +90,8 @@ extern "C" {
 #define _EVENT_ALLOCATOR_FN(ename)					\
 	static inline struct ename *_CONCAT(new_, ename)(void)		\
 	{								\
-		struct ename *event = k_malloc(sizeof(*event));		\
+        struct ename *event = NULL;                             \
+        k_mem_slab_alloc(&evt_slab, (void **)&event, K_NO_WAIT);\
 		BUILD_ASSERT(offsetof(struct ename, header) == 0,	\
 				 "");					\
 		if (unlikely(!event)) {					\
@@ -111,8 +113,9 @@ extern "C" {
 #define _EVENT_ALLOCATOR_DYNDATA_FN(ename)				\
 	static inline struct ename *_CONCAT(new_, ename)(size_t size)	\
 	{								\
-		struct ename *event = k_malloc(sizeof(*event) + size);	\
-		BUILD_ASSERT((offsetof(struct ename, dyndata) +	\
+        struct ename *event = NULL;                             \
+        k_mem_slab_alloc(&evt_slab, (void **)&event, K_NO_WAIT);\
+		BUILD_ASSERT((offsetof(struct ename, dyndata) +	        \
 				  sizeof(event->dyndata.size)) ==	\
 				 sizeof(*event), "");			\
 		BUILD_ASSERT(offsetof(struct ename, header) == 0,	\
