@@ -121,6 +121,11 @@ void led_handler(nrfs_led_evt_t evt, void *p_buffer, size_t size)
 	}
 }
 
+void nrfs_unsolicited_handler(void * p_buffer, size_t size)
+{
+	LOG_HEXDUMP_INF(p_buffer, size, "Unsolicited notification:");
+}
+
 int main(void)
 {
 	LOG_INF("Local domain.");
