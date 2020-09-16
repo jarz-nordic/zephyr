@@ -31,11 +31,15 @@ struct ncm_ctx {
 	nrfs_ctx_t app_ctx;
 };
 
-struct ncm_srv_data {
-    nrfs_hdr_t hdr;
-    nrfs_ctx_t app_ctx;
-    uint8_t app_payload[];
-} __packed;
+/**
+ * @brief Single context entry for unsolicited notifications.
+ * Used for describing unsolicited notification contents and recipient.
+ */
+struct ncm_unsolicited_ctx {
+	uint8_t domain_id;
+	uint8_t ept_id;
+	uint16_t notif_id;
+};
 
 /**
  * @brief Fill single context entry with the details about the sender of the request.
@@ -60,13 +64,25 @@ uint32_t ncm_req_id_get(struct ncm_ctx *p_ctx);
  * @brief Allocate memory for the payload of the notification.
  *
  * Allocated space should be filled with the notification details
- * and then passed to @ref ncm_notify().
+ * and then passed to @ref ncm_notify() or @ref ncm_unsolicited_notify().
  *
  * @param bytes Number of bytes to allocate.
  *
  * @return Pointer to the buffer for notification details.
  */
 void *ncm_alloc(size_t bytes);
+
+/**
+ * @brief Free memory that was earlier allocated for the notification payload.
+ *
+ * @warning Use this function only if notification is to be abandoned
+ *          and payload allocated with @ref ncm_alloc() is no longer needed.
+ * @warning This function must not be used with the allocated payload
+ *          after using it in  @ref ncm_notify() or @ref ncm_unsolicited_notify().
+ *
+ * @param p_data Pointer to the buffer for notification details.
+ */
+void ncm_abandon(void *app_payload);
 
 /**
  * @brief Send notification associated with specified context.
@@ -79,14 +95,26 @@ void *ncm_alloc(size_t bytes);
 void ncm_notify(struct ncm_ctx *p_ctx, void *app_payload, size_t size);
 
 /**
+ * @brief Send unsolicited notification.
+ *
+ * Unsolicited notifications are not associated with any previous request.
+ *
+ * @param p_ctx       Pointer to the context entry associated with the notification to be send.
+ * @param app_payload Pointer to the memory returned by @ref ncm_alloc()
+ *                    and filled with notification details.
+ * @param size        Size of the notification details.
+ */
+void ncm_unsolicited_notify(struct ncm_unsolicited_ctx *p_ctx, void *app_payload, size_t size);
+
+/**
  * @brief Free memory that was earlier allocated for the notification payload.
  *
  * @warning This function must be called by the transport backend
  *          that performed the notification.
  *
- * @param payload Notification payload.
+ * @param p_data Notification payload.
  */
-void ncm_free(void *payload);
+void ncm_free(void *p_data);
 
 #ifdef __cplusplus
 }

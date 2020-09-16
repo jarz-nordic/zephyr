@@ -89,6 +89,17 @@ static void led_handle(struct led_event *evt)
 	void *p_buffer = ncm_alloc(sizeof(dummy_response));
 	(void)memcpy(p_buffer, dummy_response, sizeof(dummy_response));
 	ncm_notify(&led_ctx[0].ctx, p_buffer, sizeof(dummy_response));
+
+	uint8_t dummy_unsolicited[] = { 0xA0, 0xA1, 0xA2 };
+	p_buffer = ncm_alloc(sizeof(dummy_unsolicited));
+	(void)memcpy(p_buffer, dummy_unsolicited, sizeof(dummy_unsolicited));
+
+	struct ncm_unsolicited_ctx ctx = {
+		.notif_id = NRFS_LED_REQ_CHANGE_STATE,
+		.domain_id = led_ctx[0].ctx.domain_id,
+		.ept_id = led_ctx[0].ctx.ept_id
+	};
+	ncm_unsolicited_notify(&ctx, p_buffer, sizeof(dummy_response));
 }
 
 static bool event_handler(const struct event_header *eh)

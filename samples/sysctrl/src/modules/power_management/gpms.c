@@ -121,9 +121,7 @@ static void gpms_notification_handler(const struct gpms_notify_event *evt)
 		ncm_notify(&p_node_ctx->ctx_local, evt->p_msg, evt->msg_size);
 	} else {
 		/* Notification is not needed. Free the NCM context. */
-		struct ncm_srv_data *p_data = CONTAINER_OF(evt->p_msg, struct ncm_srv_data, app_payload);
-
-		ncm_free(p_data);
+		ncm_abandon(evt->p_msg);
 	}
 
 	/* Free resources. */
@@ -190,11 +188,9 @@ static void gpms_init(void)
  */
 static void gpms_handle(const struct gpms_event *evt)
 {
-	const struct ncm_srv_data *p_data =
-		(const struct ncm_srv_data *) evt->p_msg->p_buffer;
-	nrfs_hdr_t hdr = p_data->hdr;
+	const nrfs_generic_t *p_data = (const nrfs_generic_t *) evt->p_msg->p_buffer;
 
-	switch (hdr.req) {
+	switch (p_data->hdr.req) {
 	case NRFS_GPMS_REQ_RADIO:
 		gpms_handler_req_radio(evt);
 		break;
