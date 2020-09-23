@@ -18,6 +18,15 @@
 
 #include <nrfs_led.h>
 #include <nrfs_pm.h>
+#include <nrfs_mts.h>
+
+#define SHM_NODE       DT_CHOSEN(zephyr_ipc_shm)
+#define SHM_START_ADDR DT_REG_ADDR(SHM_NODE)
+#define SHM_SIZE       DT_REG_SIZE(SHM_NODE)
+
+#define MTS_BUFFER_SIZE 16
+#define MTS_SOURCE_ADDR (SHM_START_ADDR + SHM_SIZE - MTS_BUFFER_SIZE)
+#define MTS_SINK_ADDR   (MTS_SOURCE_ADDR - MTS_BUFFER_SIZE)
 
 LOG_MODULE_REGISTER(nrf53net, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -28,6 +37,9 @@ static K_THREAD_STACK_DEFINE(m_tx_thread_stack, 1024);
 static K_TIMER_DEFINE(m_tx_timer, tx_timer_expiry_fn, NULL);
 static K_SEM_DEFINE(m_sem_irq, 0, 255);
 static K_SEM_DEFINE(m_sem_tx, 0, 1);
+
+uint8_t *source_buffer = (uint8_t *)MTS_SOURCE_ADDR;
+uint8_t *sink_buffer = (uint8_t *)MTS_SINK_ADDR;
 
 void tx_timer_expiry_fn(struct k_timer *dummy)
 {
@@ -49,7 +61,7 @@ static void request_generate(void)
 	uint32_t ctx = context_generate();
 	nrfs_err_t status;
 
-	switch (sys_rand32_get() % 3) {
+	switch (sys_rand32_get() % 4) {
 	case 0:
 		LOG_INF("LED: toggle.");
 		status = nrfs_led_state_change(NRFS_LED_OP_TOGGLE, sys_rand32_get() % 4);
@@ -69,6 +81,22 @@ static void request_generate(void)
 		LOG_INF("CLOCK: request.");
 		status = nrfs_pm_cpu_clock_request(sys_rand32_get(),
 						   NRFS_GPMS_CPU_CLOCK_FREQUENCY_64_MHZ, true, (void *)ctx);
+		break;
+
+	case 3:
+		LOG_INF("MTS: Copy request.");
+		for (size_t i = 0; i < MTS_BUFFER_SIZE; i++) {
+			source_buffer[i] = sys_rand32_get() & 0xFF;
+		}
+		memset(sink_buffer, 0, MTS_BUFFER_SIZE);
+
+		nrfs_mts_copy_request_t req =
+		{
+			.p_source = source_buffer,
+			.p_sink = sink_buffer,
+			.size = MTS_BUFFER_SIZE
+		};
+		status = nrfs_mts_copy_request(&req, true, (void *)ctx);
 		break;
 
 	default:
@@ -121,7 +149,25 @@ void led_handler(nrfs_led_evt_t evt, void *p_buffer, size_t size)
 	}
 }
 
-void nrfs_unsolicited_handler(void * p_buffer, size_t size)
+void mts_handler(nrfs_mts_evt_t const *p_evt, void *context)
+{
+	switch (p_evt->type) {
+	case NRFS_MTS_EVT_COPY_DONE:
+		LOG_HEXDUMP_INF(p_evt->data.copy_done.p_source,
+				p_evt->data.copy_done.size, "MTS handler - copy done - source:");
+		LOG_HEXDUMP_INF(p_evt->data.copy_done.p_source,
+				p_evt->data.copy_done.size, "MTS handler - copy done - sink:");
+		break;
+	case NRFS_MTS_EVT_REJECT:
+		LOG_INF("MTS handler - request rejected");
+		break;
+	default:
+		LOG_ERR("MTS handler - unexpected event: 0x%x", p_evt->type);
+		break;
+	}
+}
+
+void nrfs_unsolicited_handler(void *p_buffer, size_t size)
 {
 	LOG_HEXDUMP_INF(p_buffer, size, "Unsolicited notification:");
 }
@@ -140,6 +186,11 @@ int main(void)
 	status = nrfs_led_init(led_handler);
 	if (status != NRFS_SUCCESS) {
 		LOG_ERR("LED service init failed: %d", status);
+	}
+
+	status = nrfs_mts_init(mts_handler);
+	if (status != NRFS_SUCCESS) {
+		LOG_ERR("MTS service init failed: %d", status);
 	}
 
 	k_thread_create(&m_tx_thread_cb, m_tx_thread_stack,
