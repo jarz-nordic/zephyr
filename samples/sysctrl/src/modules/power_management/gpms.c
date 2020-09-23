@@ -76,6 +76,8 @@ static int gpms_notify_ctx_save(const struct gpms_event *p_evt,
 		p_node_ctx = &rescue_node_ctx;
 		p_node_ctx->is_statically_allocated = true;
 		result = -ECANCELED;
+	} else {
+		p_node_ctx->is_statically_allocated = false;
 	}
 
 	ncm_fill(&p_node_ctx->ctx_local, p_evt->p_msg);
