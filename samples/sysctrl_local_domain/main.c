@@ -19,6 +19,7 @@
 #include <nrfs_led.h>
 #include <nrfs_pm.h>
 #include <nrfs_mts.h>
+#include <nrfs_temp.h>
 
 #define SHM_NODE       DT_CHOSEN(zephyr_ipc_shm)
 #define SHM_START_ADDR DT_REG_ADDR(SHM_NODE)
@@ -47,7 +48,6 @@ void tx_timer_expiry_fn(struct k_timer *dummy)
 
 	k_sem_give(&m_sem_tx);
 
-	LOG_INF("Setting TX timer delay to %d ms", delay);
 	k_timer_start(&m_tx_timer, K_MSEC(delay), K_NO_WAIT);
 }
 
@@ -61,7 +61,7 @@ static void request_generate(void)
 	uint32_t ctx = context_generate();
 	nrfs_err_t status;
 
-	switch (sys_rand32_get() % 4) {
+	switch (sys_rand32_get() % 6) {
 	case 0:
 		LOG_INF("LED: toggle.");
 		status = nrfs_led_state_change(NRFS_LED_OP_TOGGLE, sys_rand32_get() % 4);
@@ -98,6 +98,14 @@ static void request_generate(void)
 		};
 		status = nrfs_mts_copy_request(&req, true, (void *)ctx);
 		break;
+
+	case 4:
+		LOG_INF("TEMP: measurement request.");
+		status = nrfs_temp_measure_request((void *)ctx);
+
+	case 5:
+		LOG_INF("TEMP: subscribe request.");
+		status = nrfs_temp_subscribe(1000, NRFS_TEMP_CELSIUS_TO_FACTOR(1.5), (void *)ctx);
 
 	default:
 		break;
@@ -167,6 +175,28 @@ void mts_handler(nrfs_mts_evt_t const *p_evt, void *context)
 	}
 }
 
+void temp_handler(nrfs_temp_evt_t const *p_evt, void *context)
+{
+	int32_t temp;
+
+	switch (p_evt->type) {
+	case NRFS_TEMP_EVT_MEASURE_DONE:
+		temp = nrfs_temp_convert(p_evt->raw_temp);
+		LOG_INF("TEMP handler - measurement done: %d.%d [C]", temp / 100, temp % 100);
+		break;
+	case NRFS_TEMP_EVT_CHANGE:
+		temp = nrfs_temp_convert(p_evt->raw_temp);
+		LOG_INF("TEMP handler - temp changed: %d.%d [C]", temp / 100, temp % 100);
+		break;
+	case NRFS_TEMP_EVT_REJECT:
+		LOG_INF("TEMP handler - request rejected");
+		break;
+	default:
+		LOG_ERR("TEMP handler - unexpected event: 0x%x", p_evt->type);
+		break;
+	}
+}
+
 void nrfs_unsolicited_handler(void *p_buffer, size_t size)
 {
 	LOG_HEXDUMP_INF(p_buffer, size, "Unsolicited notification:");
@@ -191,6 +221,11 @@ int main(void)
 	status = nrfs_mts_init(mts_handler);
 	if (status != NRFS_SUCCESS) {
 		LOG_ERR("MTS service init failed: %d", status);
+	}
+
+	status = nrfs_temp_init(temp_handler);
+	if (status != NRFS_SUCCESS) {
+		LOG_ERR("TEMP service init failed: %d", status);
 	}
 
 	k_thread_create(&m_tx_thread_cb, m_tx_thread_stack,
