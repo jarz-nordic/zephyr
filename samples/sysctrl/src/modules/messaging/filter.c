@@ -13,6 +13,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "led_event.h"
 #include "gpms_event.h"
 #include "mts_event.h"
+#include "temp_event.h"
 #include "ncm.h"
 
 #include <internal/nrfs_hdr.h>
@@ -72,11 +73,21 @@ static enum filter_result mts_msg_filter(nrfs_phy_t *p_msg, void **pp_evt)
 	return FILTER_OK;
 }
 
+static enum filter_result temp_msg_filter(nrfs_phy_t *p_msg, void **pp_evt)
+{
+	struct temp_event *temp_evt = new_temp_event();
+
+	temp_evt->p_msg = p_msg;
+	*pp_evt = temp_evt;
+	return FILTER_OK;
+}
+
 static enum filter_result(*const filters[])(nrfs_phy_t * p_msg, void **pp_evt) =
 {
 	[NRFS_SERVICE_ID_LED] = led_msg_filter,
 	[NRFS_SERVICE_ID_GPMS] = gpms_msg_filter,
 	[NRFS_SERVICE_ID_MTS] = mts_msg_filter,
+	[NRFS_SERVICE_ID_TEMP] = temp_msg_filter,
 };
 
 static void msg_received(struct prism_event *evt)

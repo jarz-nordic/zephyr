@@ -29,6 +29,7 @@ target_sources(app PRIVATE
 		src/events/ld_notify_event.c
 		src/events/radio_event.c
 		src/events/mts_event.c
+		src/events/temp_event.c
 )
 
 target_sources(app PRIVATE
@@ -44,6 +45,7 @@ target_sources(app PRIVATE
 		src/modules/tmr_mngr/tmr_mngr.c
 		src/modules/tmr_mngr/tmr_mngr_backend.c
 		src/modules/memory_transfer/mts.c
+		src/modules/temperature/temp.c
 )
 
 # NORDIC SDK APP END
