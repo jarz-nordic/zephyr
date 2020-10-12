@@ -1,0 +1,8 @@
+# nRF52 STRZELNICA BOARD board configuration
+
+# Copyright (c) 2020 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_NRF52832_STRZELNICA
+	bool "nRF52 NRF52832 STRZELNICA"
+	depends on SOC_NRF52832_QFAA

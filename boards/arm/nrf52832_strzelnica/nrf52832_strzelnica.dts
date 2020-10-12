@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2020 Jakub Rzeszutko <jakub@rzeszutko.eu>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf52832_qfaa.dtsi>
+
+/ {
+	model = "Nordic nRF52832 STRZELNICA";
+	compatible = "nordic,nrf52832-strzelnica";
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,bt-mon-uart = &uart0;
+		zephyr,bt-c2h-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+			label = "Green LED";
+		};
+		led1: led_1 {
+			gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+			label = "Red LED";
+		};
+		led2: led_2 {
+			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
+			label = "Blue LED";
+		};
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led0: pwm_led_0 {
+			pwms = <&pwm0 17>;
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 11 (GPIO_ACTIVE_LOW)>;
+			label = "Push button speed";
+		};
+		button1: button_1 {
+			gpios = <&gpio0 12 (GPIO_ACTIVE_LOW)>;
+			label = "Push button call";
+		};
+	};
+
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		led0 = &led0;
+		led-green = &led0;
+		led-red = &led1;
+		led-blue = &led2;
+		pwm-led0 = &pwm_led0;
+		sw-speed = &button0;
+		sw-call = &button1;
+	};
+};
+
+&adc {
+	status = "okay";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&pwm0 {
+	status = "okay";
+	ch0-pin = <17>;
+	ch0-inverted;
+};
+
+&uart0 {
+	status = "okay";
+	compatible = "nordic,nrf-uart";
+	current-speed = <115200>;
+	rx-pin = <19>;
+	tx-pin = <20>;
+};
+
+&flash0 {
+	/*
+	 * For more information, see:
+	 * https://docs.zephyrproject.org/latest/guides/dts/legacy-macros.html#legacy-flash-partitions
+	 */
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 0xc000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0x0000C000 0x32000>;
+		};
+		slot1_partition: partition@3e000 {
+			label = "image-1";
+			reg = <0x0003E000 0x32000>;
+		};
+		scratch_partition: partition@70000 {
+			label = "image-scratch";
+			reg = <0x00070000 0xa000>;
+		};
+		storage_partition: partition@7a000 {
+			label = "storage";
+			reg = <0x0007a000 0x00006000>;
+		};
+	};
+};

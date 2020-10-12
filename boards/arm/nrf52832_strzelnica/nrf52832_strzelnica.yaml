@@ -1,0 +1,18 @@
+identifier: board_nrf52832_strzelnica
+name: BOARD_nrf52832_STRZELNICA
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 64
+flash: 512
+supported:
+  - adc
+  - gpio
+  - counter
+  - nvs
+  - pwm
+  - watchdog
+  - arduino_serial
