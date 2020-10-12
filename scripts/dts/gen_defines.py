@@ -95,9 +95,116 @@ def main():
 
         write_chosen(edt)
         write_global_compat_info(edt)
+        write_translator(edt)
 
-    if args.edt_pickle_out:
-        write_pickled_edt(edt, args.edt_pickle_out)
+        if args.edt_pickle_out:
+            write_pickled_edt(edt, args.edt_pickle_out)
+
+def write_translator(edt):
+    try:
+        regulators = next(x for x in edt.nodes if x.path == '/regulators')
+        rails = next(x for x in edt.nodes if x.path == '/rails')
+        consumers = next(x for x in edt.nodes if x.path == '/consumers')
+    except StopIteration:
+        return
+
+    dt_file = open(os.path.join(os.path.dirname(header_file.name), 'pmgt_dt.h'), "w", encoding="utf-8")
+    print("#ifndef NRF_PMGT_DT_H_\n#define NRF_PMGT_DT_H_", file=dt_file)
+
+    pmgt_id = 0
+    gpms_max_requirements = 0
+    gpms_max_modes = 0
+    gpms_max_outputs = 0
+    gpms_max_nodes = 0
+    gpms_max_parents = 0
+
+    for reg_name, reg in regulators.children.items():
+        reg.props['id'] = pmgt_id
+        pmgt_id += 1
+
+    for rail_name, rail in rails.children.items():
+        rail.props['id'] = pmgt_id
+        pmgt_id += 1
+
+    for consumer_name, consumer in consumers.children.items():
+        consumer.props['id'] = pmgt_id
+        pmgt_id += 1
+
+    gpms_max_nodes = pmgt_id
+    for reg_name, reg in regulators.children.items():
+        print(f"NRF_GPMS_REGULATOR_DEFINE({reg.props['id']}, {reg_name}, {prop2value(reg.props['clean'])}", file=dt_file, end='')
+        gpms_max_outputs = max(gpms_max_outputs, len(reg.children['outputs'].children))
+
+        for output_name, output in reg.children['outputs'].children.items():
+            props = output.props
+            print(f", NRF_GPMS_REGULATOR_OUT_ADD({output_name}, {prop2value(props['min_volt'])}, "
+                  f"{prop2value(props['max_volt'])}, {prop2value(props['efficiency'])}, {prop2value(props['drop'])}, "
+                  f"{prop2value(props['bypass'])}, {props['rail'].val.props['id']})", file=dt_file, end='')
+            props['rail'].val.props['parents'].val.append(reg)
+
+        print(")\n", file=dt_file)
+
+    for rail_name, rail in rails.children.items():
+        print(f"NRF_GPMS_RAIL_INIT({rail.props['id']}, {rail_name})", file=dt_file)
+
+    for consumer_name, consumer in consumers.children.items():
+        print(f"\nNRF_GPMS_CONSUMER_BEGIN({consumer.props['id']}, {consumer_name})\n", file=dt_file)
+
+        print("NRF_GPMS_CONSUMER_MODE_BEGIN(OFF)", file=dt_file)
+        rail = next(iter(consumer.children['modes'].children.values())).children['requirements'].children['requirement'].props['rail'].val.props['id']
+        print(f"NRF_GPMS_CONSUMER_VOLT_OFF({rail})", file=dt_file)
+        print("NRF_GPMS_CONSUMER_MODE_END()\n", file=dt_file)
+        gpms_max_modes = max(gpms_max_modes, len(consumer.children['modes'].children))
+
+        for mode_name, mode in consumer.children['modes'].children.items():
+            print(f"NRF_GPMS_CONSUMER_MODE_BEGIN({mode_name})", file=dt_file)
+            gpms_max_requirements = max(gpms_max_requirements, len(mode.children['requirements'].children))
+            props = mode.children['requirements'].children['requirement'].props
+            print(f"NRF_GPMS_CONSUMER_VOLT_ADD({prop2value(props['min_volt'])}, {prop2value(props['max_volt'])},"
+                  f" {prop2value(props['clean'])}, {props['rail'].val.props['id']})", file=dt_file)
+            print("NRF_GPMS_CONSUMER_MODE_END()\n", file=dt_file)
+
+        print("NRF_GPMS_CONSUMER_END()\n", file=dt_file)
+
+    print("/* CONNECTIONS */\n", file=dt_file)
+    print("NRF_GPMS_LOOKUP_BEGIN()\n", file=dt_file)
+
+    for reg_name, reg in regulators.children.items():
+        print(f"NRF_GPMS_LOOKUP_NODE_BEGIN({reg.props['id']}, {reg_name})", file=dt_file)
+        gpms_max_parents = max(gpms_max_parents, len(reg.props['parents'].val))
+        for parent in reg.props['parents'].val:
+            print(f"NRF_GPMS_LOOKUP_PARENT_ADD({parent.name})", file=dt_file)
+        print(f"NRF_GPMS_LOOKUP_NODE_END()\n", file=dt_file)
+
+    for rail_name, rail in rails.children.items():
+        print(f"NRF_GPMS_LOOKUP_NODE_BEGIN({rail.props['id']}, {rail_name})", file=dt_file)
+        gpms_max_parents = max(gpms_max_parents, len(rail.props['parents'].val))
+        for parent in rail.props['parents'].val:
+            print(f"NRF_GPMS_LOOKUP_PARENT_ADD({parent.name})", file=dt_file)
+        print(f"NRF_GPMS_LOOKUP_NODE_END()\n", file=dt_file)
+
+    for consumer_name, consumer in consumers.children.items():
+        print(f"NRF_GPMS_LOOKUP_NODE_BEGIN({consumer.props['id']}, {consumer_name})", file=dt_file)
+        gpms_max_parents = max(gpms_max_parents, len(consumer.props['parents'].val))
+        for parent in consumer.props['parents'].val:
+            print(f"NRF_GPMS_LOOKUP_PARENT_ADD({parent.name})", file=dt_file)
+        print(f"NRF_GPMS_LOOKUP_NODE_END()\n", file=dt_file)
+
+    print("NRF_GPMS_LOOKUP_END()\n", file=dt_file)
+
+    print("#endif // NRF_PMGT_DT_H_", file=dt_file)
+    dt_file.close()
+
+    dt_file_defs = open(os.path.join(os.path.dirname(header_file.name), 'pmgt_defines.h'), "w", encoding="utf-8")
+    print("#ifndef NRF_PMGT_DEFINES_H_\n#define NRF_PMGT_DEFINES_H_", file=dt_file_defs)
+    print(f"#define NRF_GPMS_MAX_REQUIREMENTS {gpms_max_requirements} // Maximum number of requirements per mode", file=dt_file_defs)
+    print(f"#define NRF_GPMS_MAX_MODES        {gpms_max_modes + 1} // Maximum number of modes per consumer", file=dt_file_defs)
+    print(f"#define NRF_GPMS_MAX_OUTS         {gpms_max_outputs + 1} // Maximum number of outputs per regulator", file=dt_file_defs)
+    print(f"#define NRF_GPMS_MAX_NODES        {gpms_max_nodes} // Maximum number of nodes", file=dt_file_defs)
+    print(f"#define NRF_GPMS_MAX_PARENTS      {gpms_max_parents} // Maximum number of parents per node", file=dt_file_defs)
+    print("#endif // NRF_PMGT_DEFINES_H_", file=dt_file_defs)
+    dt_file_defs.close()
+
 
 
 def node_z_path_id(node):

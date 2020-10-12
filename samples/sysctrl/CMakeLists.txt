@@ -13,6 +13,7 @@ project("SYSCTRL application")
 zephyr_library_include_directories(src/events)
 zephyr_library_include_directories(src/modules/messaging)
 zephyr_library_include_directories(src/modules/tmr_mngr)
+zephyr_library_include_directories(src/modules/power_management)
 
 # Application sources
 # NORDIC SDK APP START
@@ -35,6 +36,7 @@ target_sources(app PRIVATE
 		src/modules/power_management/gpms.c
 		src/modules/power_management/power_control.c
 		src/modules/power_management/clock_control.c
+		src/modules/power_management/nrf_gpms.c
 		src/modules/messaging/filter.c
 		src/modules/messaging/prism_dispatcher.c
 		src/modules/messaging/ncm.c

@@ -80,7 +80,7 @@ static void request_generate(void)
 	case 2:
 		LOG_INF("CLOCK: request.");
 		status = nrfs_pm_cpu_clock_request(sys_rand32_get(),
-						   NRFS_GPMS_CPU_CLOCK_FREQUENCY_64_MHZ, true, (void *)ctx);
+			sys_rand32_get() % NRFS_GPMS_CPU_CLOCK_FREQUENCY_400_MHZ, true, (void *)ctx);
 		break;
 
 	case 3:

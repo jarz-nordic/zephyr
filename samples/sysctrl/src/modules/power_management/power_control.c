@@ -24,16 +24,32 @@ LOG_MODULE_DECLARE(MAIN);
 #include "ncm.h"
 
 #include <internal/services/nrfs_gpms.h>
+#include "nrf_gpms.h"
+#include "pmgt_dt.h"
 
 static inline bool is_gpms_fault(int32_t gpms_status)
 {
 	return (bool) gpms_status;
 }
 
+void *              dynamic[NRF_GPMS_MAX_NODES];
+nrf_gpms_dyn_cons_t consumers[NRF_GPMS_MAX_NODES];
+nrf_gpms_dyn_reg_t  regulators[NRF_GPMS_MAX_NODES];
+nrf_gpms_dyn_rail_t rails[NRF_GPMS_MAX_NODES];
+
+nrf_gpms_cb_t gpms = {
+	.stat = lookup,
+	.dyn  = dynamic,
+	.cons = consumers,
+	.reg  = regulators,
+	.rail = rails,
+};
+
 static void power_control_init(void)
 {
 	pm_pcm_dispatcher_init();
 	pm_pcm_scheduler_init();
+	nrf_gpms_initialize(&gpms);
 }
 
 /* @brief Function for notifying GPMS.
@@ -75,11 +91,26 @@ static void clock_power_handle(const struct clock_power_event *evt)
 {
 	nrfs_gpms_clock_t *p_req = (nrfs_gpms_clock_t *)evt->p_msg->p_buffer;
 
-	/* TODO */
-	static int cnt = 0;
-	LOG_INF("CLOCK POWER HANDLER %d", cnt++);
-	/* Dummy response. */
-	uint32_t result = 16;
+	const nrf_gpms_node_t * consumer;
+	uint8_t mode;
+
+	if (p_req->data.frequency > NRFS_GPMS_CPU_CLOCK_FREQUENCY_128_MHZ) {
+		mode = 3;
+	} else if (p_req->data.frequency > NRFS_GPMS_CPU_CLOCK_FREQUENCY_64_MHZ) {
+		mode = 2;
+	} else {
+		mode = 1;
+	}
+
+	switch (evt->p_msg->domain_id) {
+	case 0:
+		consumer = &app_core;
+		break;
+	default:
+		LOG_ERR("Unsupported clock domain");
+		break;
+	}
+	nrf_gpms_consumer_mode_set(&gpms, consumer, mode);
 
 
 	struct clock_done_event *clk_done = new_clock_done_event();
