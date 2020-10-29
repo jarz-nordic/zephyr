@@ -31,8 +31,8 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
 
-#include <settings/settings.h>
 #include <shell/shell.h>
+#include "config.h"
 
 LOG_MODULE_REGISTER(smp_sample);
 
@@ -64,23 +64,10 @@ static struct fs_mount_t littlefs_mnt = {
 };
 #endif
 
-static int speed;
-int cfg_handle_set(const char *name, size_t len, settings_read_cb read_cb,
-	void *cb_arg);
-int cfg_handle_commit(void);
-int cfg_handle_export(int (*cb)(const char *name,
-		       const void *value, size_t val_len));
-int cfg_handle_get(const char *name, char *val, int val_len_max);
-
-void init_my_settings(void);
-/* static subtree handler */
-SETTINGS_STATIC_HANDLER_DEFINE(cfg, "engine/cfg", cfg_handle_get,
-			       cfg_handle_set, cfg_handle_commit,
-			       cfg_handle_export);
-
-
 void main(void)
 {
+
+	k_msleep(4000);
 
 	int rc = STATS_INIT_AND_REG(smp_svr_stats, STATS_SIZE_32,
 				    "smp_svr_stats");
@@ -145,7 +132,11 @@ void main(void)
         }
 
     }
-    init_my_settings();
+
+	ret = config_module_init();
+	if (ret) {
+		LOG_ERR("config_module error (err: %d)", ret);
+	}
 
     while (1) {
 		k_sleep(K_MSEC(1000));
@@ -157,25 +148,26 @@ void main(void)
 
 static int cmd_konf_read(const struct shell *shell, size_t argc, char **argv)
 {
-    settings_load();
-    shell_print(shell, "value = %d", speed);
+	const uint32_t *speed = config_param_get(CONFIG_PARAM_SPEED_MAX);
 
-    return 0;
+	shell_print(shell, "new value = %d", *speed);
+
+	return 0;
 }
 
 static int cmd_konf_write(const struct shell *shell, size_t argc, char **argv)
 {
-    int rc;
+	int rc;
+	uint32_t data;
+	uint32_t param;
 
-    settings_load();
+	param = (int)strtol(argv[1], NULL, 10);
+	data = (int)strtol(argv[2], NULL, 10);
 
-    speed = (int)strtol(argv[1], NULL, 10);
+	rc = config_param_write(param, &data);
 
-	rc = settings_save_one("engine/cfg/speed", (const void *)&speed,
-			       sizeof(speed));
-    settings_save();
-    shell_print(shell, "rc = %d", rc);
-    return 0;
+	shell_print(shell, "rc = %d", rc);
+	return 0;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_konf,
@@ -184,61 +176,3 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_konf,
     SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 SHELL_CMD_ARG_REGISTER(konfig, &sub_konf, NULL, NULL, 2, 0);
-
-int cfg_handle_set(const char *name, size_t len, settings_read_cb read_cb,
-		  void *cb_arg)
-{
-	const char *next;
-	size_t name_len;
-	int rc;
-
-	name_len = settings_name_next(name, &next);
-
-	if (!next) {
-		if (!strncmp(name, "speed", name_len)) {
-			rc = read_cb(cb_arg, &speed, sizeof(speed));
-			printk("<engine/cfg/speed> = %d\n", speed);
-			return 0;
-		}
-
-        return 0;
-	}
-
-	return -ENOENT;
-}
-
-int cfg_handle_export(int (*cb)(const char *name,
-			       const void *value, size_t val_len))
-{
-	printk("export keys under <CFG> handler\n");
-	(void)cb("engine/cfg/speed", &speed, sizeof(speed));
-
-	return 0;
-}
-
-int cfg_handle_commit(void)
-{
-	printk("loading all settings under <cfg> handler is done\n");
-	return 0;
-}
-
-int cfg_handle_get(const char *name, char *val, int val_len_max)
-{
-	const char *next;
-
-	return -ENOENT;
-}
-
-void init_my_settings(void)
-{
-    int rc;
-
-	rc = settings_subsys_init();
-	if (rc) {
-		printk("settings subsys initialization: fail (err %d)\n", rc);
-		return;
-	}
-
-	settings_load();
-}
-
