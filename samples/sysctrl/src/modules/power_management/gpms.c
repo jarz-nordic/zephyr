@@ -173,6 +173,22 @@ static void gpms_handler_req_clk_freq(const struct gpms_event *evt)
 	}
 }
 
+static void gpms_handler_req_clk_src(const struct gpms_event *evt)
+{
+	nrfs_gpms_clksrc_t *p_req = (nrfs_gpms_clksrc_t *) evt->p_msg->p_buffer;
+
+	int result = gpms_notify_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
+
+	/* Forward the message further. */
+	struct clock_source_event *clock_source_evt = new_clock_source_event();
+
+	if (clock_source_evt) {
+		clock_source_evt->p_msg = evt->p_msg;
+		clock_source_evt->status = result;
+		EVENT_SUBMIT(clock_source_evt);
+	}
+}
+
 /* @brief Initialization handler
  * @note  This function handles initialization event.
  * @param  None.
@@ -191,7 +207,6 @@ static void gpms_init(void)
 static void gpms_handle(const struct gpms_event *evt)
 {
 	const nrfs_generic_t *p_data = (const nrfs_generic_t *) evt->p_msg->p_buffer;
-
 	switch (p_data->hdr.req) {
 	case NRFS_GPMS_REQ_RADIO:
 		gpms_handler_req_radio(evt);
@@ -199,6 +214,10 @@ static void gpms_handle(const struct gpms_event *evt)
 
 	case NRFS_GPMS_REQ_CLK_FREQ:
 		gpms_handler_req_clk_freq(evt);
+		break;
+
+	case NRFS_GPMS_REQ_CLK_SRC:
+		gpms_handler_req_clk_src(evt);
 		break;
 
 	default:

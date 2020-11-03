@@ -12,6 +12,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "prism_event.h"
 #include "gpms_notify_event.h"
 #include "ncm.h"
+#include <random/rand32.h>
 
 struct clock_domain_t {
 	enum nrfs_gpms_clock_frequency cpu_clk;
@@ -154,6 +155,68 @@ static void clock_done_handle(const struct clock_done_event *evt)
 	prism_event_release(evt->p_msg);
 }
 
+static void clock_source_handle(const struct clock_source_event *evt)
+{
+	static bool lfclk_subscribed;
+	nrfs_gpms_clksrc_t *p_req = (nrfs_gpms_clksrc_t *)evt->p_msg->p_buffer;
+
+	nrfs_gpms_clksrc_rsp_data_t gpms_clksrc_rsp_data;
+	uint32_t msg_ctx = (uint32_t)p_req->ctx.ctx;
+	uint32_t result = 1;
+	gpms_clksrc_rsp_data.response = 1;
+	gpms_clksrc_rsp_data.request = p_req->data.request;
+
+	/** Placeholder for handling clock source requests. */
+	switch (p_req->data.request) {
+	case NRFS_GPMS_LFCLK_REQUEST:
+		/* Announce change of LFCLK. This should be done after request is processed.
+		 * Notify all clients that subscribed to LFCLK changes.
+		 */
+		gpms_clksrc_rsp_data.request = NRFS_GPMS_LFCLK_ANNOUNCE;
+		gpms_clksrc_rsp_data.response = 100;
+		p_req->data.do_notify = lfclk_subscribed;
+		break;
+	case NRFS_GPMS_LFCLK_RELEASE:
+		/* Announce change of LFCLK. This should be done after request is processed.
+		 * Notify all clients that subscribed to LFCLK changes.
+		 */
+		gpms_clksrc_rsp_data.request = NRFS_GPMS_LFCLK_ANNOUNCE;
+		gpms_clksrc_rsp_data.response = 2000;
+		p_req->data.do_notify = lfclk_subscribed;
+		break;
+	case NRFS_GPMS_HFCLK_REQUEST:
+		/* Announce change of HFCLK. This should be done after request is processed
+		 * on given time.
+		 * */
+		gpms_clksrc_rsp_data.request = NRFS_GPMS_HFCLK_READY;
+		break;
+	case NRFS_GPMS_HFCLK_RELEASE:
+		/* Release HFCLK */
+		break;
+	case NRFS_GPMS_LFCLK_SUBSCRIBE:
+		lfclk_subscribed = true;
+		break;
+	case NRFS_GPMS_LFCLK_UNSUBSCRIBE:
+		lfclk_subscribed = false;
+		break;
+	case NRFS_GPMS_LFCLK_RECALIBRATE:
+		break;
+	default:
+		break;
+
+	}
+
+	if (p_req->data.do_notify) {
+		if (pm_notify(&gpms_clksrc_rsp_data,
+				sizeof(gpms_clksrc_rsp_data),
+				msg_ctx,
+				result) != 0) {
+			__ASSERT(false, "Failed to allocate memory for the clock response data.");
+		}
+	}
+	prism_event_release(evt->p_msg);
+}
+
 static bool event_handler(const struct event_header *eh)
 {
 	if (is_clock_event(eh)) {
@@ -168,9 +231,20 @@ static bool event_handler(const struct event_header *eh)
 		clock_done_handle(evt);
 		return true;
 	}
+	if (is_clock_source_event(eh)) {
+		const struct clock_source_event *evt = cast_clock_source_event(eh);
 
+		clock_source_handle(evt);
+		return true;
+	}
+
+	/* If event is unhandled, unsubscribe. */
+	__ASSERT_NO_MSG(false);
+
+	return false;
 }
 
 EVENT_LISTENER(CLOCK_CONTROL, event_handler);
 EVENT_SUBSCRIBE(CLOCK_CONTROL, clock_event);
 EVENT_SUBSCRIBE(CLOCK_CONTROL, clock_done_event);
+EVENT_SUBSCRIBE(CLOCK_CONTROL, clock_source_event);

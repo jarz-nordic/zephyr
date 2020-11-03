@@ -80,3 +80,26 @@ EVENT_TYPE_DEFINE(clock_done_event,
 	  IS_ENABLED(CONFIG_LOG) ? true : false,
 	  IS_ENABLED(CONFIG_LOG) ? log_clock_done_event : NULL,
 	  IS_ENABLED(CONFIG_LOG) ? &clock_done_event_info : NULL);
+
+
+
+static int log_clock_source_event(const struct event_header *eh, char *buf,
+             size_t buf_len)
+{
+    struct clock_source_event *event = cast_clock_source_event(eh);
+    nrfs_gpms_clksrc_t *p_req = (nrfs_gpms_clksrc_t *) event->p_msg->p_buffer;
+
+    return snprintf(buf, buf_len, "d=%d r=%d",
+		    event->p_msg->domain_id,
+		    p_req->data.request);
+}
+
+EVENT_INFO_DEFINE(clock_source_event,
+          ENCODE(PROFILER_ARG_U8),
+          ENCODE("domain"),
+          NULL);
+
+EVENT_TYPE_DEFINE(clock_source_event,
+	  IS_ENABLED(CONFIG_LOG) ? true : false,
+	  IS_ENABLED(CONFIG_LOG) ? log_clock_source_event : NULL,
+	  IS_ENABLED(CONFIG_LOG) ? &clock_source_event_info : NULL);

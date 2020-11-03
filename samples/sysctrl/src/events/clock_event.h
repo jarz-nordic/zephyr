@@ -44,6 +44,14 @@ struct clock_done_event {
 
 EVENT_TYPE_DECLARE(clock_done_event);
 
+struct clock_source_event {
+    struct event_header header;
+    nrfs_phy_t *p_msg;
+    int32_t status;
+};
+
+EVENT_TYPE_DECLARE(clock_source_event);
+
 #ifdef __cplusplus
 }
 #endif

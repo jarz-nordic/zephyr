@@ -56,12 +56,58 @@ static uint32_t context_generate(void)
 	return sys_rand32_get();
 }
 
+static nrfs_err_t pm_request_generate(void * ctx)
+{
+	static bool lfclk_requested;
+	static bool hfclk_requested;
+	static bool subscribe_lfclk;
+
+	nrfs_err_t status;
+
+	switch (sys_rand32_get() % 4){
+	case 0:
+		if (lfclk_requested) {
+			status = nrfs_pm_accurate_lfclk_release(ctx);
+			lfclk_requested = false;
+		} else {
+			status = nrfs_pm_accurate_lfclk_request(ctx);
+			lfclk_requested = true;
+		}
+		break;
+	case 1:
+		nrfs_pm_lfclk_recalibrate(ctx);
+		break;
+	case 2:
+		if (hfclk_requested) {
+			status = nrfs_pm_hfclk_xtal_release(ctx);
+			hfclk_requested = false;
+		} else {
+			status = nrfs_pm_hfclk_xtal_request(sys_rand32_get() % 500, NRFS_PM_HFCLK_NOTIFY_DONE, ctx);
+			hfclk_requested = true;
+		}
+		break;
+	case 3:
+		if (subscribe_lfclk) {
+			status = nrfs_pm_accurate_lfclk_unsubscribe(ctx);
+			subscribe_lfclk = false;
+		} else {
+			status = nrfs_pm_accurate_lfclk_subscribe(ctx);
+			subscribe_lfclk = true;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return status;
+}
+
 static void request_generate(void)
 {
 	uint32_t ctx = context_generate();
 	nrfs_err_t status;
 
-	switch (sys_rand32_get() % 6) {
+	switch (sys_rand32_get() % 7) {
 	case 0:
 		LOG_INF("LED: toggle.");
 		status = nrfs_led_state_change(NRFS_LED_OP_TOGGLE, sys_rand32_get() % 4);
@@ -98,15 +144,20 @@ static void request_generate(void)
 		};
 		status = nrfs_mts_copy_request(&req, true, (void *)ctx);
 		break;
-
 	case 4:
 		LOG_INF("TEMP: measurement request.");
 		status = nrfs_temp_measure_request((void *)ctx);
+		break;
 
 	case 5:
 		LOG_INF("TEMP: subscribe request.");
 		status = nrfs_temp_subscribe(1000, NRFS_TEMP_CELSIUS_TO_FACTOR(1.5), (void *)ctx);
-
+		break;
+	case 6:
+	{
+		status = pm_request_generate((void *)ctx);
+		break;
+	}
 	default:
 		break;
 	}
@@ -124,9 +175,9 @@ void tx_thread(void *arg1, void *arg2, void *arg3)
 	}
 }
 
-void pm_handler(nrfs_pm_evt_t evt, void *context)
+void pm_handler(nrfs_pm_evt_t const *evt, void *context)
 {
-	switch (evt) {
+	switch (evt->type) {
 	case NRFS_PM_EVT_NOTIFICATION:
 		LOG_INF("PM handler - notification: 0x%x", (uint32_t)context);
 		break;
@@ -136,8 +187,14 @@ void pm_handler(nrfs_pm_evt_t evt, void *context)
 	case NRFS_PM_EVT_REJECT:
 		LOG_INF("PM handler - request rejected: 0x%x", (uint32_t)context);
 		break;
+	case NRFS_PM_EVT_LFCLK_ACCURACY:
+		LOG_INF("PM handler - LFCLK accuracy: %d ppm", evt->data.lfclk.ppm);
+		break;
+	case NRFS_PM_EVT_HFCLK_XTAL_READY:
+		LOG_INF("PM handler - HFCLK xtal source");
+		break;
 	default:
-		LOG_ERR("PM handler - unexpected event: 0x%x", evt);
+		LOG_ERR("PM handler - unexpected event: 0x%x", evt->type);
 		break;
 	}
 }
