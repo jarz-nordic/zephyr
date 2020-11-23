@@ -15,12 +15,65 @@ LOG_MODULE_DECLARE(MAIN);
 #include "status_event.h"
 #include "clock_event.h"
 #include "gpms_event.h"
-#include "gpms_notify_event.h"
 #include "prism_event.h"
 #include "radio_event.h"
 #include "ncm.h"
+#include "gpms.h"
 
 #include <internal/services/nrfs_gpms.h>
+
+int gpms_notify(void *p_buf, size_t size, struct ncm_ctx * p_ctx)
+{
+        struct gpms_notify_event *notify_evt = new_gpms_notify_event();
+
+        /* Allocate memory for the notification. */
+        void *p_notify_buffer = ncm_alloc(size);
+
+        if (p_notify_buffer == NULL) {
+                /* Failed to allocate NCM memory. */
+                return -ENOMEM;
+        }
+
+        /* Copy provided notify structure to the notify buffer. */
+        memcpy(p_notify_buffer, p_buf, size);
+
+        /* Assign pointer to the response structure to the event. */
+        notify_evt->p_msg = p_notify_buffer;
+        notify_evt->msg_size = size;
+        notify_evt->p_ctx = p_ctx;
+
+        /* Issue the event.*/
+        EVENT_SUBMIT(notify_evt);
+
+        return 0;
+}
+
+int gpms_response(void *p_resp, size_t resp_size, uint32_t gpms_ctx, int32_t result)
+{
+        struct gpms_response_event *response_evt = new_gpms_response_event();
+
+        /* Allocate memory for the response. */
+        void *p_resp_buffer = ncm_alloc(resp_size);
+
+        if (p_resp_buffer == NULL) {
+                /* Failed to allocate NCM memory. */
+                return -ENOMEM;
+        }
+
+        /* Copy provided response structure to the response buffer. */
+        memcpy(p_resp_buffer, p_resp, resp_size);
+
+        /* Assign pointer to the response structure to the event. */
+        response_evt->p_msg = p_resp_buffer;
+        response_evt->msg_size = resp_size;
+        response_evt->ctx = gpms_ctx;
+        response_evt->status = result;
+
+        /* Issue the event.*/
+        EVENT_SUBMIT(response_evt);
+
+        return 0;
+}
 
 #define GPMS_SLAB_BLOCK_SIZE  (16)              /* Single block size. */
 #define GPMS_SLAB_BLOCK_CNT   (4)               /* Block count. */
@@ -34,7 +87,7 @@ K_MEM_SLAB_DEFINE(gpms_slab,
 typedef struct {
 	sys_snode_t sysnode;            /* Linked list node. */
 	struct ncm_ctx ctx_local;       /* Local context. Used to handle responses. */
-	bool notification_request;      /* Request from local domain to notify it about the
+	bool response_request;          /* Request from local domain to return the
 					   result. Even if it is not set, but service returns
 					   error, it is sent to the local domain. */
 	bool is_statically_allocated;   /* If there is not enough memory for the msg,
@@ -56,13 +109,14 @@ static sys_slist_t slist; /* Contains all collected messages as linked list. */
  * @param p_evt      Pointer to the gpms event structure.
  * @param p_context  Pointer to the context of the message.
  *                   It is context assigned by a sender. This context is
- *                   saved and overwritten by address of the node in linked list.
+ *                   saved and overwritten by address of the node in linked list,
+ *                   aka GPMS context.
  * @param notify_req Notification request from local domain.
  * @retval 0          In case of success.
  *         -ECANCELED Failed to allocate memory for the node.
  */
-static int gpms_notify_ctx_save(const struct gpms_event *p_evt,
-				uint32_t *p_context, bool notify_req)
+static int gpms_ctx_save(const struct gpms_event *p_evt,
+			 uint32_t *p_context, bool notify_req)
 {
 	int result = 0;
 
@@ -81,7 +135,7 @@ static int gpms_notify_ctx_save(const struct gpms_event *p_evt,
 	}
 
 	ncm_fill(&p_node_ctx->ctx_local, p_evt->p_msg);
-	p_node_ctx->notification_request = notify_req;
+	p_node_ctx->response_request = notify_req;
 
 	/* Add node to the linked list. */
 	sys_slist_append(&slist, (sys_snode_t *)p_node_ctx);
@@ -89,7 +143,7 @@ static int gpms_notify_ctx_save(const struct gpms_event *p_evt,
 	/* Update context of the message. Assign address of the node
 	 * in slist. If the notification is required this address will be used
 	 * by returning message to restore context of the sender.*/
-	*p_context = (uint32_t) p_node_ctx;
+	*p_context = (uint32_t) &p_node_ctx->ctx_local;
 
 	return result;
 }
@@ -98,7 +152,7 @@ static int gpms_notify_ctx_save(const struct gpms_event *p_evt,
  * @param  p_node_ctx Pointer to the linked list context.
  * @retval None.
  */
-static void gpms_notify_ctx_remove(node_ctx_t *p_node_ctx)
+static void gpms_ctx_remove(node_ctx_t *p_node_ctx)
 {
 	sys_slist_find_and_remove(&slist, &p_node_ctx->sysnode);
 	if (!p_node_ctx->is_statically_allocated) {
@@ -113,12 +167,27 @@ static void gpms_notify_ctx_remove(node_ctx_t *p_node_ctx)
  */
 static void gpms_notification_handler(const struct gpms_notify_event *evt)
 {
-	node_ctx_t *p_node_ctx = (node_ctx_t *) evt->ctx;
+        /* Send notification to the local domain. */
+        ncm_notify(evt->p_ctx, evt->p_msg, evt->msg_size);
 
-	bool is_notification_needed = (bool) (p_node_ctx->notification_request ||
+        /* Free resources. */
+        prism_event_release(evt->p_msg);
+}
+
+/* @brief Response handler.
+ * @note  This function sends response to the local domain.
+ * @param evt Pointer to the event structure.
+ * @retval None.
+ */
+static void gpms_response_handler(const struct gpms_response_event *evt)
+{
+	node_ctx_t *p_node_ctx = CONTAINER_OF((struct ncm_ctx *)evt->ctx, node_ctx_t, ctx_local);
+
+
+	bool is_response_needed = (bool) (p_node_ctx->response_request ||
 					      (evt->status != 0));
 
-	if (is_notification_needed) {
+	if (is_response_needed) {
 		/* Send notification to the local domain. */
 		ncm_notify(&p_node_ctx->ctx_local, evt->p_msg, evt->msg_size);
 	} else {
@@ -127,7 +196,7 @@ static void gpms_notification_handler(const struct gpms_notify_event *evt)
 	}
 
 	/* Free resources. */
-	gpms_notify_ctx_remove(p_node_ctx);
+	gpms_ctx_remove(p_node_ctx);
 	prism_event_release(evt->p_msg);
 }
 
@@ -140,7 +209,7 @@ static void gpms_handler_req_radio(const struct gpms_event *evt)
 {
 	nrfs_gpms_radio_t *p_req = (nrfs_gpms_radio_t *) evt->p_msg->p_buffer;
 
-	int result = gpms_notify_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
+	int result = gpms_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
 
 	/* Forward the message further. */
 	struct radio_event *radio_evt = new_radio_event();
@@ -161,7 +230,7 @@ static void gpms_handler_req_clk_freq(const struct gpms_event *evt)
 {
 	nrfs_gpms_clock_t *p_req = (nrfs_gpms_clock_t *) evt->p_msg->p_buffer;
 
-	int result = gpms_notify_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
+	int result = gpms_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
 
 	/* Forward the message further. */
 	struct clock_event *clock_evt = new_clock_event();
@@ -177,7 +246,7 @@ static void gpms_handler_req_clk_src(const struct gpms_event *evt)
 {
 	nrfs_gpms_clksrc_t *p_req = (nrfs_gpms_clksrc_t *) evt->p_msg->p_buffer;
 
-	int result = gpms_notify_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
+	int result = gpms_ctx_save(evt, &p_req->ctx.ctx, p_req->data.do_notify);
 
 	/* Forward the message further. */
 	struct clock_source_event *clock_source_evt = new_clock_source_event();
@@ -257,6 +326,13 @@ static bool event_handler(const struct event_header *eh)
 		return true;
 	}
 
+	if (is_gpms_response_event(eh)) {
+		const struct gpms_response_event *evt = cast_gpms_response_event(eh);
+
+		gpms_response_handler(evt);
+		return true;
+	}
+
 	/* If event is unhandled, unsubscribe. */
 	__ASSERT_NO_MSG(false);
 
@@ -267,3 +343,4 @@ EVENT_LISTENER(GPMS, event_handler);
 EVENT_SUBSCRIBE(GPMS, status_event);
 EVENT_SUBSCRIBE(GPMS, gpms_event);
 EVENT_SUBSCRIBE(GPMS, gpms_notify_event);
+EVENT_SUBSCRIBE(GPMS, gpms_response_event);

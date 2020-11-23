@@ -14,7 +14,6 @@ LOG_MODULE_DECLARE(MAIN);
 #include "clock_event.h"
 #include "radio_event.h"
 #include "gpms_event.h"
-#include "gpms_notify_event.h"
 
 #include "pm/pm.h"
 #include "pm/pcm/global_off.h"
@@ -22,6 +21,7 @@ LOG_MODULE_DECLARE(MAIN);
 #include "pm/pcm/dispatcher.h"
 #include "pm/pcm/scheduler.h"
 #include "ncm.h"
+#include "gpms.h"
 
 #include <internal/services/nrfs_gpms.h>
 #include "nrf_gpms.h"
@@ -50,41 +50,6 @@ static void power_control_init(void)
 	pm_pcm_dispatcher_init();
 	pm_pcm_scheduler_init();
 	nrf_gpms_initialize(&gpms);
-}
-
-/* @brief Function for notifying GPMS.
- * @param p_resp    Pointer to the service response structure.
- * @param resp_size Size of the service response structure.
- * @param p_ctx     Pointer to the context.
- * @param result    Result of the operation.
- * @retval 0       Notification sent with success.
- *         -ENOMEM Failed to allocate memory for the message.
- */
-static int pm_notify(void *p_resp, size_t resp_size, uint32_t ctx, int32_t result)
-{
-	struct gpms_notify_event *notify_evt = new_gpms_notify_event();
-
-	/* Allocate memory for the response. */
-	void *p_resp_buffer = ncm_alloc(resp_size);
-
-	if (p_resp_buffer == NULL) {
-		/* Failed to allocate NCM memory. */
-		return -ENOMEM;
-	}
-
-	/* Copy provided response structure to the response buffer. */
-	memcpy(p_resp_buffer, p_resp, resp_size);
-
-	/* Assign pointer to the response structure to the event. */
-	notify_evt->p_msg = p_resp_buffer;
-	notify_evt->msg_size = resp_size;
-	notify_evt->ctx = ctx;
-	notify_evt->status = result;
-
-	/* Issue the event.*/
-	EVENT_SUBMIT(notify_evt);
-
-	return 0;
 }
 
 static void clock_power_handle(const struct clock_power_event *evt)
@@ -144,7 +109,7 @@ static void radio_handle(const struct radio_event *evt)
 
 	gpms_radio_res_data.response = result;
 
-	if (pm_notify(&gpms_radio_res_data,
+	if (gpms_response(&gpms_radio_res_data,
 		      sizeof(gpms_radio_res_data),
 		      msg_ctx,
 		      result) != 0) {

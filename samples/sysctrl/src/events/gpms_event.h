@@ -8,8 +8,8 @@
 #define _GPMS_EVENT_H_
 
 /**
- * @brief GPMS Event
- * @defgroup gpms_event GPMS Event
+ * @brief GPMS Events
+ * @defgroup gpms_events GPMS Events
  * @{
  */
 
@@ -27,6 +27,25 @@ struct gpms_event {
 };
 
 EVENT_TYPE_DECLARE(gpms_event);
+
+struct gpms_response_event {
+    struct event_header header;
+    uint32_t            ctx;
+    void              * p_msg;
+    size_t              msg_size;
+    int32_t             status;
+};
+
+EVENT_TYPE_DECLARE(gpms_response_event);
+
+struct gpms_notify_event {
+    struct event_header header;
+    struct ncm_ctx    * p_ctx;
+    void              * p_msg;
+    size_t              msg_size;
+};
+
+EVENT_TYPE_DECLARE(gpms_notify_event);
 
 #ifdef __cplusplus
 }
