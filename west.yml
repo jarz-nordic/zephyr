@@ -23,6 +23,8 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: haltium-project
       url-base: ssh://git@bitbucket.nordicsemi.no:7999/haltium
+    - name: throwtheswitch
+      url-base: https://github.com/ThrowTheSwitch
 
   #
   # Please add items below based on alphabetical order
@@ -150,6 +152,14 @@ manifest:
       path: modules/lib/nrfs
       remote: haltium-project
       revision: master-zephyr
+    - name: cmock
+      path: test/cmock
+      revision: c243b9a7a7b3c471023193992b46cf1bd1910450
+      remote: throwtheswitch
+    - name: unity
+      path: test/cmock/vendor/unity
+      revision: 031f3bbe45f8adf504ca3d13e6f093869920b091
+      remote: throwtheswitch
 
   self:
     path: zephyr
