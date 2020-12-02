@@ -446,6 +446,7 @@ endif()
 add_subdirectory(boards)
 add_subdirectory(subsys)
 add_subdirectory(drivers)
+add_subdirectory(tests)
 
 # Include zephyr modules generated CMake file.
 foreach(module_name ${ZEPHYR_MODULE_NAMES})
