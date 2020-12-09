@@ -28,7 +28,7 @@ zephyr_library_sources(
 	${CMOCK_DIR}/src/cmock.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_BOARD_NATIVE_POSIX src/native_posix.c)
+zephyr_library_sources_ifdef(CONFIG_BOARD_NATIVE_POSIX ${ZEPHYR_BASE}/tests/unity/src/native_posix.c)
 
 # Generate test runner file.
 function(test_runner_generate test_file_path)
