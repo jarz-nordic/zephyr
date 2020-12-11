@@ -28,6 +28,7 @@ zephyr_library_sources(
 	${CMOCK_DIR}/src/cmock.c
 )
 
+add_subdirectory_ifdef(CONFIG_FAKE_EVENT_MANAGER ${ZEPHYR_BASE}/tests/unity/fake_event_manager)
 zephyr_library_sources_ifdef(CONFIG_BOARD_NATIVE_POSIX ${ZEPHYR_BASE}/tests/unity/src/native_posix.c)
 
 # Generate test runner file.

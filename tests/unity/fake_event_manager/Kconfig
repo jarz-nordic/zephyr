@@ -1,0 +1,13 @@
+#
+# Copyright (c) 2020 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
+#
+
+config FAKE_EVENT_MANAGER
+	bool "Use Fake Event Manager."
+	depends on UNITY
+	depends on !EVENT_MANAGER
+	help
+	  Use this module if you need to test application using
+	  event manager
