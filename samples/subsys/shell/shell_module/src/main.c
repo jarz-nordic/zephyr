@@ -77,6 +77,21 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_log_test,
 
 SHELL_CMD_REGISTER(log_test, &sub_log_test, "Log test", NULL);
 
+void my_cb(const struct shell *shell, uint8_t c)
+{
+	shell_print(shell, "\nmeta key = %d", c);
+}
+
+static int cmd_metakey_register(const struct shell *shell, size_t argc,
+				char **argv)
+{
+	SHELL_META_KEY_CALLBACK_REGISTER(shell, my_cb);
+
+	shell_print(shell, "registered");
+
+	return 0;
+}
+
 static int cmd_demo_ping(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -142,6 +157,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_demo,
 SHELL_CMD_REGISTER(demo, &sub_demo, "Demo commands", NULL);
 
 SHELL_CMD_ARG_REGISTER(version, NULL, "Show kernel version", cmd_version, 1, 0);
+
+SHELL_CMD_REGISTER(metakey_register, NULL, "NULL", cmd_metakey_register);
 
 void main(void)
 {
