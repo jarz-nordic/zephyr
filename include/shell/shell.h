@@ -125,6 +125,13 @@ const struct device *shell_device_lookup(size_t idx,
 				   const char *prefix);
 
 /**
+ * @brief
+ *
+ */
+typedef void (*shell_meta_key_callback_t)(const struct shell *shell,
+					  uint8_t metakey);
+
+/**
  * @brief Shell command handler prototype.
  *
  * @param shell Shell instance.
@@ -165,6 +172,10 @@ struct shell_static_entry {
 	shell_cmd_handler handler;		/*!< Command handler. */
 	struct shell_static_args args;		/*!< Command arguments. */
 };
+
+#define SHELL_META_KEY_CALLBACK_REGISTER(_shell, _callback)	\
+	_shell->ctx->metakey_callback = _callback
+
 
 /**
  * @brief Macro for defining and adding a root command (level 0) with required
@@ -639,6 +650,9 @@ enum shell_signal {
  */
 struct shell_ctx {
 	const char *prompt; /*!< shell current prompt. */
+
+	/* user callback when metakey is detected */
+	shell_meta_key_callback_t metakey_callback;
 
 	enum shell_state state; /*!< Internal module state.*/
 	enum shell_receive_state receive_state;/*!< Escape sequence indicator.*/

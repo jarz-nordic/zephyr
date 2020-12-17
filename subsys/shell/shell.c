@@ -827,6 +827,10 @@ static void alt_metakeys_handle(const struct shell *shell, char data)
 			shell_print_prompt_and_cmd(shell);
 		}
 	}
+
+	if (shell->ctx->metakey_callback) {
+		shell->ctx->metakey_callback(shell, data);
+	}
 }
 
 static void ctrl_metakeys_handle(const struct shell *shell, char data)
@@ -898,6 +902,10 @@ static void ctrl_metakeys_handle(const struct shell *shell, char data)
 
 	default:
 		break;
+	}
+
+	if (shell->ctx->metakey_callback) {
+		shell->ctx->metakey_callback(shell, data);
 	}
 }
 
