@@ -38,13 +38,6 @@
 		};
 	};
 
-	pwmleds {
-		compatible = "pwm-leds";
-		pwm_led0: pwm_led_0 {
-			pwms = <&pwm0 17>;
-		};
-	};
-
 	buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {
@@ -84,7 +77,13 @@
 
 &pwm0 {
 	status = "okay";
-	ch0-pin = <17>;
+	ch0-pin = <5>;
+	ch0-inverted;
+};
+
+&pwm1 {
+	status = "okay";
+	ch0-pin = <6>;
 	ch0-inverted;
 };
 
@@ -94,6 +93,14 @@
 	current-speed = <115200>;
 	rx-pin = <19>;
 	tx-pin = <20>;
+};
+
+&qdec {
+	status = "okay";
+	a-pin = <16>;
+	b-pin = <17>;
+	led-pre = <1>;
+	steps = <16>;
 };
 
 &flash0 {
