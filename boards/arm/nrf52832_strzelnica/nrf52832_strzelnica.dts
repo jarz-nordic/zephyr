@@ -50,6 +50,23 @@
 		};
 	};
 
+	hbridge {
+		compatible = "gpio-keys";
+		hbridgeen: hbridge_en {
+			gpios = <&gpio0 4 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;
+			label = "Hbridge enable line";
+		};
+	};
+
+        pwmmotor {
+                compatible = "pwm-leds";
+                pwmch0: pwm_ch0 {
+                        pwms = <&pwm0 5>;
+                };
+                pwmch1: pwm_ch1 {
+                        pwms = <&pwm1 6>;
+                };
+        };
 
 	/* These aliases are provided for compatibility with samples */
 	aliases {
@@ -59,6 +76,9 @@
 		led-blue = &led2;
 		sw-speed = &button0;
 		sw-call = &button1;
+		hbridge-en = &hbridgeen;
+		pwm-ch0 = &pwmch0;
+		pwm-ch1 = &pwmch1;
 	};
 };
 
