@@ -57,7 +57,6 @@
 		led-green = &led0;
 		led-red = &led1;
 		led-blue = &led2;
-		pwm-led0 = &pwm_led0;
 		sw-speed = &button0;
 		sw-call = &button1;
 	};
