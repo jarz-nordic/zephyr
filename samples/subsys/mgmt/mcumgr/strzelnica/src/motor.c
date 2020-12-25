@@ -56,7 +56,7 @@ LOG_MODULE_REGISTER(motor);
 #error "Unsupported board: PWM_CH1 devicetree alias is not defined"
 #endif
 
-#define PWM_PERIOD_MS (100u)
+#define PWM_PERIOD_US (10000u)
 
 struct motor_cb {
 	enum motor_drv_direction current_dir;
@@ -79,6 +79,10 @@ static void hbridge_enable(bool enable)
 		LOG_ERR("%s: Cannot set output", __FUNCTION__);
 		return;
 	}
+
+    if (enable) {
+        k_sleep(K_MSEC(10));
+    }
 }
 
 static int hbridge_init(void)
@@ -126,7 +130,7 @@ static int qdec_init(void)
 	return 0;
 }
 
-static int pwm_ch0_set(uint8_t duty_cycle)
+static int pwm_ch0_set(uint32_t duty_cycle)
 {
 	const struct device *dev;
 	int ret;
@@ -137,7 +141,7 @@ static int pwm_ch0_set(uint8_t duty_cycle)
                 return -ENODEV;
 	}
 
-	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, PWM_PERIOD_MS, duty_cycle,
+	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, PWM_PERIOD_US, duty_cycle,
 				PWM0_FLAGS);
 	if (ret) {
         	LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
@@ -147,7 +151,7 @@ static int pwm_ch0_set(uint8_t duty_cycle)
 
 }
 
-static int pwm_ch1_set(uint8_t duty_cycle)
+static int pwm_ch1_set(uint32_t duty_cycle)
 {
 	const struct device *dev;
 	int ret;
@@ -158,7 +162,7 @@ static int pwm_ch1_set(uint8_t duty_cycle)
                 return -ENODEV;
 	}
 
-	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, PWM_PERIOD_MS, duty_cycle,
+	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, PWM_PERIOD_US, duty_cycle,
 				PWM1_FLAGS);
 	if (ret) {
         	LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
@@ -167,41 +171,56 @@ static int pwm_ch1_set(uint8_t duty_cycle)
 	return ret;
 }
 
-static int pwms_set(enum motor_drv_direction direction, uint8_t duty_cycle)
+static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 {
-	if (duty_cycle > 100) {
-		LOG_WRN("%s: Requested Duty Cycle > 100", __FUNCTION__);
-		duty_cycle = 100;
+    int ret = -EINVAL;
+
+	if (duty > PWM_PERIOD_US) {
+		LOG_WRN("%s: Max allowed pwm period: %d  | requested: %d",
+                __FUNCTION__, PWM_PERIOD_US, duty);
+		duty = 100;
 	}
 
 	switch (direction)
 	{
 	case MOTOR_DRV_FORWARD:
-		pwm_ch0_set(0);
-		pwm_ch1_set(duty_cycle);
+		ret = pwm_ch0_set(duty);
+        if (ret) {
+            return ret;
+        }
+		ret = pwm_ch1_set(0);
 		break;
 	case MOTOR_DRV_BACKWARD:
-		pwm_ch0_set(duty_cycle);
-		pwm_ch1_set(0);
+		ret = pwm_ch0_set(0);
+        if (ret) {
+            return ret;
+        }
+		ret = pwm_ch1_set(duty);
 		break;
 	case MOTOR_DRV_BRAKE:
-		pwm_ch0_set(100);
-		pwm_ch1_set(100);
+		ret = pwm_ch0_set(PWM_PERIOD_US);
+        if (ret) {
+            return ret;
+        }
+		ret = pwm_ch1_set(PWM_PERIOD_US);
 		break;
 	case MOTOR_DRV_NEUTRAL:
-		pwm_ch0_set(0);
-		pwm_ch1_set(0);
+		ret = pwm_ch0_set(0);
+        if (ret) {
+            return ret;
+        }
+		ret = pwm_ch1_set(0);
 		break;
 	default:
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static uint8_t calculate_speed(uint32_t speed)
 {
-	return 20;
+	return 50;
 }
 
 static int check_direction(enum motor_drv_direction direction)
@@ -233,22 +252,27 @@ int motor_init(void)
 	if (ret) {
 		LOG_ERR("Hbridge Init error: [%d]", ret);
 		return ret;
-	}
+	} else {
+        LOG_INF("Hbridge initialized");
+    }
 
 	ret = pwm_init();
 	if (ret) {
 		LOG_ERR("PWM Init error: [%d]", ret);
 		return ret;
-	}
+	} else {
+        LOG_INF("PWM channels initialized");
+    }
 
 	ret = qdec_init();
 	if (ret) {
 		LOG_ERR("QDEC Init retor: [%d]", ret);
 		return ret;
-	}
+	} else {
+        LOG_INF("QDEC initialized");
+    }
 
 	motor_move(MOTOR_DRV_NEUTRAL, 0);
-	hbridge_enable(false);
 
 	return 0;
 }
@@ -260,7 +284,8 @@ int motor_init(void)
  */
 int motor_move(enum motor_drv_direction direction, uint32_t speed)
 {
-	uint8_t duty;
+    static const char *lookup[] = {"NEUTRAL", "FORWARD", "BACKWARD", "BRAKE"};
+	uint32_t duty;
 	int ret;
 
 	ret = check_direction(direction);
@@ -269,8 +294,16 @@ int motor_move(enum motor_drv_direction direction, uint32_t speed)
 	}
 
 	hbridge_enable(true);
-	duty = calculate_speed(speed);
+//	duty = calculate_speed(speed);
+    duty = speed;
 	ret = pwms_set(direction, duty);
+
+    if (ret) {
+        LOG_ERR("%s: error: [%d]", __FUNCTION__, ret);
+    } else {
+        LOG_INF("Motor move.\n\rdirection: [%s]\r\nduty_cycle: [%d/%d]",
+                lookup[direction], duty, PWM_PERIOD_US);
+    }
 
 	return ret;
 }
