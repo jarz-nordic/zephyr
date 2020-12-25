@@ -136,22 +136,23 @@ void main(void)
 	}
 
 	(void)motor_init();
-	motor_move(MOTOR_DRV_FORWARD, 100);
+	motor_move(MOTOR_DRV_FORWARD, 3000);
 
     bool forward = true;
 
 	while (1) {
 		k_sleep(K_MSEC(1500));
-	    motor_move(MOTOR_DRV_BRAKE, 100);
+
+        motor_move(MOTOR_DRV_BRAKE, 0);
 		STATS_INC(smp_svr_stats, ticks);
-		gpio_pin_set(dev, PIN, (int)led_is_on);
+		gpio_pin_set(dev, PIN, 0);
 		led_is_on = !led_is_on;
 
-        k_sleep(K_MSEC(300));
+        k_sleep(K_MSEC(500));
         if (forward) {
-	        motor_move(MOTOR_DRV_BACKWARD, 100);
+	        motor_move(MOTOR_DRV_BACKWARD, 7000);
         } else {
-	        motor_move(MOTOR_DRV_FORWARD, 100);
+	        motor_move(MOTOR_DRV_FORWARD, 7000);
         }
         forward = !forward;
 
