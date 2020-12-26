@@ -24,15 +24,15 @@
 
 	leds {
 		compatible = "gpio-leds";
-		led0: led_0 {
+		ledgreen: led_green {
 			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
 			label = "Green LED";
 		};
-		led1: led_1 {
+		ledred: led_red {
 			gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
 			label = "Red LED";
 		};
-		led2: led_2 {
+		ledblue: led_blue {
 			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
 			label = "Blue LED";
 		};
@@ -70,10 +70,9 @@
 
 	/* These aliases are provided for compatibility with samples */
 	aliases {
-		led0 = &led0;
-		led-green = &led0;
-		led-red = &led1;
-		led-blue = &led2;
+		led-green = &ledgreen;
+		led-red = &ledred;
+		led-blue = &ledblue;
 		sw-speed = &button0;
 		sw-call = &button1;
 		hbridge-en = &hbridgeen;
