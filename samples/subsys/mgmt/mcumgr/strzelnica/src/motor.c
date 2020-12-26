@@ -17,6 +17,7 @@
 #include <shell/shell.h>
 #include "config.h"
 #include "motor.h"
+#include "encoder.h"
 
 LOG_MODULE_REGISTER(motor);
 
@@ -93,12 +94,12 @@ static int hbridge_init(void)
 	dev = device_get_binding(HBRIDGE_EN_LABEL);
 	if (dev == NULL) {
 		LOG_ERR("Cannot bind HBRIDGE_EN");
-		return -ENODEV;
+		return -ENXIO;
 	}
 	ret = gpio_pin_configure(dev, HBRIDGE_EN_PIN,
 				 GPIO_OUTPUT_ACTIVE | HBRIDGE_EN_FLAGS);
         if (ret < 0) {
-                return -EINVAL;
+                return -ENXIO;
         }
 
 	hbridge_enable(false);
@@ -113,20 +114,15 @@ static int pwm_init(void)
 	dev = device_get_binding(PWM0_LABEL);
         if (dev == NULL) {
                 LOG_ERR("Cannot bind PWM0 device");
-                return -ENODEV;
+                return -ENXIO;
         }
 
 	dev = device_get_binding(PWM1_LABEL);
         if (dev == NULL) {
                 LOG_ERR("Cannot bind PWM1 device");
-                return -ENODEV;
+                return -ENXIO;
         }
 
-	return 0;
-}
-
-static int qdec_init(void)
-{
 	return 0;
 }
 
@@ -138,7 +134,7 @@ static int pwm_ch0_set(uint32_t duty_cycle)
 	dev = device_get_binding(PWM0_LABEL);
 	if (dev == NULL) {
         	LOG_WRN("%s: Cannot bind PWM0 device", __FUNCTION__);
-                return -ENODEV;
+                return -ENXIO;
 	}
 
 	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, PWM_PERIOD_US, duty_cycle,
@@ -159,7 +155,7 @@ static int pwm_ch1_set(uint32_t duty_cycle)
 	dev = device_get_binding(PWM1_LABEL);
 	if (dev == NULL) {
         	LOG_WRN("%s: Cannot bind PWM1 device", __FUNCTION__);
-                return -ENODEV;
+                return -ENXIO;
 	}
 
 	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, PWM_PERIOD_US, duty_cycle,
@@ -178,7 +174,7 @@ static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 	if (duty > PWM_PERIOD_US) {
 		LOG_WRN("%s: Max allowed pwm period: %d  | requested: %d",
                 __FUNCTION__, PWM_PERIOD_US, duty);
-		duty = 100;
+		duty = PWM_PERIOD_US;
 	}
 
 	switch (direction)
@@ -264,12 +260,12 @@ int motor_init(void)
         LOG_INF("PWM channels initialized");
     }
 
-	ret = qdec_init();
+	ret = encoder_init();
 	if (ret) {
-		LOG_ERR("QDEC Init retor: [%d]", ret);
+		LOG_ERR("encoder init error: [%d]", ret);
 		return ret;
 	} else {
-        LOG_INF("QDEC initialized");
+        LOG_INF("Encoder initialized");
     }
 
 	motor_move(MOTOR_DRV_NEUTRAL, 0);

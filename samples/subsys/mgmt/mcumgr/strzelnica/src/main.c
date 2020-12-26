@@ -38,6 +38,8 @@
 LOG_MODULE_REGISTER(main);
 
 #include "common.h"
+#include "encoder.h"
+
 #define LED0_NODE DT_ALIAS(led0)
 #define LED0    DT_GPIO_LABEL(LED0_NODE, gpios)
 #define PIN DT_GPIO_PIN(LED0_NODE, gpios)
@@ -141,6 +143,7 @@ void main(void)
     bool forward = true;
 
 	while (1) {
+        int32_t samples;
 		k_sleep(K_MSEC(1500));
 
         motor_move(MOTOR_DRV_BRAKE, 0);
@@ -154,6 +157,7 @@ void main(void)
         } else {
 	        motor_move(MOTOR_DRV_FORWARD, 7000);
         }
+        (void)encoder_get(&samples);
         forward = !forward;
 
 	}
