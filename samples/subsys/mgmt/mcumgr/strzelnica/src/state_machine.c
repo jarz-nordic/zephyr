@@ -51,11 +51,11 @@ static void state_machine_thread_fn(void)
 			break;
 		case SM_BT_UPDATE:
 			break;
-	        }
 		default:
 			LOG_ERR("%s: unexpected SM state.", __FUNCTION__);
 			state = SM_ERROR;
 			break;
+        }
 
 		k_sleep(K_MSEC(200));
 	}

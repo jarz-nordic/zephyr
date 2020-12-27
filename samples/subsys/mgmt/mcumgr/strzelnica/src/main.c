@@ -126,12 +126,35 @@ void main(void)
 		LOG_ERR("config_module error (err: %d)", ret);
 	}
 
-	(void)motor_init();
-	motor_move(MOTOR_DRV_FORWARD, 3000);
+//void)motor_init();
+//otor_move(MOTOR_DRV_FORWARD, 3000);
 
-    bool forward = true;
+  //bool forward = true;
 
+    led_blink_slow(LED_GREEN, 4);
+    led_blink_fast(LED_RED, 4);
+    led_blink_slow(LED_BLUE, 4);
+#if 0
+    led_set(LED_GREEN, true);
+    k_sleep(K_MSEC(1000));
+    led_set(LED_GREEN, false);
+
+    led_set(LED_RED, true);
+    k_sleep(K_MSEC(1000));
+    led_set(LED_RED, false);
+
+    led_set(LED_BLUE, true);
+    k_sleep(K_MSEC(1000));
+    led_set(LED_BLUE, false);
+    k_sleep(K_MSEC(1000));
+#endif
 	while (1) {
+//        led_blink_fast(LED_GREEN, 10);
+//        led_blink_fast(LED_RED, 10);
+//        led_blink_fast(LED_BLUE, 10);
+        k_sleep(K_MSEC(5000));
+    }
+#if 0
         int32_t samples;
 		k_sleep(K_MSEC(1500));
 
@@ -148,6 +171,7 @@ void main(void)
         forward = !forward;
 
 	}
+#endif
 }
 
 static int cmd_konf_read(const struct shell *shell, size_t argc, char **argv)
