@@ -3,6 +3,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#ifndef __LED_MODULE_H
+#define __LED_MODULE_H
+
 #include <zephyr/types.h>
 
 /*
@@ -20,6 +23,8 @@
  *	   is interrupted and the next event is supported.
  *
 */
+
+#define LED_BLINK_INFINITE	0xFF
 
 /* Enum with available LED colors */
 enum led_color {
@@ -67,3 +72,5 @@ int led_blink_fast(enum led_color color, uint8_t cnt);
  * @retval -ENOMEM	No space in events fifo, try again later.
  */
 int led_blink_slow(enum led_color color, uint8_t cnt);
+
+#endif // __LED_MODULE_H

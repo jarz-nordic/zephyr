@@ -47,7 +47,6 @@ LOG_MODULE_REGISTER(led);
 
 #define THREAD_STACK_SIZE	2048
 #define THREAD_PRIORITY		K_PRIO_PREEMPT(1)
-#define LED_INFINITE		0xFF
 
 K_FIFO_DEFINE(led_fifo);
 static K_THREAD_STACK_DEFINE(thread_stack, THREAD_STACK_SIZE);
@@ -191,7 +190,7 @@ static void led_thread_fn(void)
 			k_sleep(K_MSEC(400));
 			__fallthrough;
 		case LED_ACTION_BLINK_FAST:
-			if (active_obj->value == LED_INFINITE) {
+			if (active_obj->value == LED_BLINK_INFINITE) {
 				if (!k_fifo_is_empty(&led_fifo)) {
 					active_obj->value = 1;
 				}
