@@ -40,11 +40,11 @@
 
 	buttons {
 		compatible = "gpio-keys";
-		button0: button_0 {
+		buttonspeed: button_speed {
 			gpios = <&gpio0 11 (GPIO_ACTIVE_LOW)>;
 			label = "Push button speed";
 		};
-		button1: button_1 {
+		buttoncall: button_call {
 			gpios = <&gpio0 12 (GPIO_ACTIVE_LOW)>;
 			label = "Push button call";
 		};
@@ -73,8 +73,8 @@
 		led-green = &ledgreen;
 		led-red = &ledred;
 		led-blue = &ledblue;
-		sw-speed = &button0;
-		sw-call = &button1;
+		button-speed = &buttonspeed;
+		button-call = &buttoncall;
 		hbridge-en = &hbridgeen;
 		pwm-ch0 = &pwmch0;
 		pwm-ch1 = &pwmch1;

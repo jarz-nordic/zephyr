@@ -34,12 +34,13 @@
 #include <shell/shell.h>
 #include "config.h"
 #include "motor.h"
-
-LOG_MODULE_REGISTER(main);
-
 #include "common.h"
 #include "encoder.h"
 #include "led.h"
+#include "buttons.h"
+
+LOG_MODULE_REGISTER(main);
+
 
 /* Define an example stats group; approximates seconds since boot. */
 STATS_SECT_START(smp_svr_stats)
@@ -63,6 +64,23 @@ static struct fs_mount_t littlefs_mnt = {
 	.mnt_point = "/lfs"
 };
 #endif
+
+void buttons_cb(enum button_name name, enum button_event evt)
+{
+	if (name == BUTTON_NAME_CALL) {
+		if (evt == BUTTON_EVT_PRESSED_SHORT) {
+			led_blink_fast(LED_GREEN, 4);
+		} else {
+			led_blink_slow(LED_GREEN, 4);
+		}
+	} else if (name == BUTTON_NAME_SPEED) {
+		if (evt == BUTTON_EVT_PRESSED_SHORT) {
+			led_blink_fast(LED_RED, 4);
+		} else {
+			led_blink_slow(LED_RED, 4);
+		}
+	}
+}
 
 void main(void)
 {
@@ -115,11 +133,15 @@ void main(void)
 	/* The system work queue handles all incoming mcumgr requests.  Let the
 	 * main thread idle while the mcumgr server runs.
 	 */
+	ret = led_thread_init();
+	if (ret) {
+		LOG_ERR("led module not initialized. err:%d", ret);
+	}
 
-    ret = led_thread_init();
-    if (ret) {
-        LOG_ERR("led module not initialized. err:%d", ret);
-    }
+	ret = buttons_init(buttons_cb);
+	if (ret) {
+		LOG_ERR("buttons module not initialized. err:%d", ret);
+	}
 
 	ret = config_module_init();
 	if (ret) {
@@ -131,28 +153,17 @@ void main(void)
 
   //bool forward = true;
 
-    led_blink_slow(LED_GREEN, 4);
-    led_blink_fast(LED_RED, 4);
-    led_blink_slow(LED_BLUE, 4);
-#if 0
-    led_set(LED_GREEN, true);
-    k_sleep(K_MSEC(1000));
-    led_set(LED_GREEN, false);
-
-    led_set(LED_RED, true);
-    k_sleep(K_MSEC(1000));
-    led_set(LED_RED, false);
-
-    led_set(LED_BLUE, true);
-    k_sleep(K_MSEC(1000));
-    led_set(LED_BLUE, false);
-    k_sleep(K_MSEC(1000));
-#endif
 	while (1) {
+	buttons_enable(true);
+	LOG_INF("Buttons ENABLED");
+        k_sleep(K_MSEC(5000));
 //        led_blink_fast(LED_GREEN, 10);
 //        led_blink_fast(LED_RED, 10);
 //        led_blink_fast(LED_BLUE, 10);
+	buttons_enable(false);
+	LOG_INF("Buttons disabled");
         k_sleep(K_MSEC(5000));
+
     }
 #if 0
         int32_t samples;
