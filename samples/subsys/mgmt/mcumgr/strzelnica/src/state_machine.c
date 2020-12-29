@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <zephyr.h>
 #include <stats/stats.h>
+#include "led.h"
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
