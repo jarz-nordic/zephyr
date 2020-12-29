@@ -31,10 +31,13 @@ static int qdec_init(void)
 	return 0;
 }
 
-
 int encoder_init(void)
 {
+	struct sensor_value val;
+
 	qdec_init();
+	(void)sensor_sample_fetch(qdec_dev);
+	(void)sensor_channel_get(qdec_dev, SENSOR_CHAN_ROTATION, &val);
 
     return 0;
 }

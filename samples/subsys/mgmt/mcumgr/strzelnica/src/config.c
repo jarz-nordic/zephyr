@@ -164,9 +164,10 @@ const void *config_param_get(enum config_param_type type)
 		return &p->speed_min;
 	case CONFIG_PARAM_DISTANCE_MIN:
 		return &p->distance_min;
-	defaut:
-		LOG_INF("Uknown parameter type");
+	default:
 		break;
 	}
+
+	LOG_INF("%s: Uknown parameter type", __FUNCTION__);
 	return NULL;
 }

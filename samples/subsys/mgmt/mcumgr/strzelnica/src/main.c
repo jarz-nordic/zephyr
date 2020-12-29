@@ -37,7 +37,7 @@
 #include "common.h"
 #include "encoder.h"
 #include "led.h"
-#include "buttons.h"
+#include "state_machine.h"
 
 LOG_MODULE_REGISTER(main);
 
@@ -65,24 +65,6 @@ static struct fs_mount_t littlefs_mnt = {
 };
 #endif
 
-void buttons_cb(enum button_name name, enum button_event evt)
-{
-	if (name == BUTTON_NAME_CALL) {
-		if (evt == BUTTON_EVT_PRESSED_SHORT) {
-			led_blink_fast(LED_GREEN, 3);
-		} else {
-			led_blink_slow(LED_GREEN, 3);
-		}
-		button_enable(BUTTON_NAME_CALL, true);
-	} else if (name == BUTTON_NAME_SPEED) {
-		if (evt == BUTTON_EVT_PRESSED_SHORT) {
-			led_blink_fast(LED_RED, 3);
-		} else {
-			led_blink_slow(LED_RED, 3);
-		}
-		button_enable(BUTTON_NAME_SPEED, true);
-	}
-}
 
 void main(void)
 {
@@ -143,30 +125,23 @@ void main(void)
 	 */
 	LOG_INF("build time: " __DATE__ " " __TIME__);
 
-	ret = buttons_init(buttons_cb);
-	if (ret) {
-		LOG_ERR("buttons module not initialized. err:%d", ret);
-	}
-
 	ret = config_module_init();
 	if (ret) {
 		LOG_ERR("config_module error (err: %d)", ret);
 	}
 
-	buttons_enable(true);
-	LOG_INF("Buttons ENABLED");
-
 	ret = motor_init();
 	if (ret) {
+		LOG_ERR("motor init error (err: %d)", ret);
 		led_blink_slow(LED_RED, LED_BLINK_INFINITE);
 		return;
 	}
 
-  //bool forward = true;
-
-	while (1) {
-		k_sleep(K_MSEC(400));
+	ret = state_machine_init();
+	if (ret) {
+		LOG_ERR("State machine init error (err: %d)", ret);
 	}
+
 #if 0
         int32_t samples;
 		k_sleep(K_MSEC(1500));
