@@ -112,7 +112,7 @@
 };
 
 &qdec {
-	status = "okay";
+/*	status = "okay"; */
 	a-pin = <16>;
 	b-pin = <17>;
 	led-pre = <1>;

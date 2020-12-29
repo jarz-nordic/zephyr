@@ -25,5 +25,6 @@ typedef void (* button_hander_t)(enum button_name name, enum button_event evt);
 
 int buttons_init(button_hander_t button_cb);
 int buttons_enable(bool enable);
+int button_enable(enum button_name name, bool enable);
 
 #endif // __BUTTONS_H_

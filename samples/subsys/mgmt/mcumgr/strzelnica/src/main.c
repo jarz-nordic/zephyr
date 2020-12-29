@@ -69,19 +69,20 @@ void buttons_cb(enum button_name name, enum button_event evt)
 {
 	if (name == BUTTON_NAME_CALL) {
 		if (evt == BUTTON_EVT_PRESSED_SHORT) {
-			led_blink_fast(LED_GREEN, 4);
+			led_blink_fast(LED_GREEN, 3);
 		} else {
-			led_blink_slow(LED_GREEN, 4);
+			led_blink_slow(LED_GREEN, 3);
 		}
 	} else if (name == BUTTON_NAME_SPEED) {
 		if (evt == BUTTON_EVT_PRESSED_SHORT) {
-			led_blink_fast(LED_RED, 4);
+			led_blink_fast(LED_RED, 3);
 		} else {
-			led_blink_slow(LED_RED, 4);
+			led_blink_slow(LED_RED, 3);
 		}
 	}
 }
 
+extern void button_print_pins(void);
 void main(void)
 {
     int ret;
@@ -148,21 +149,19 @@ void main(void)
 		LOG_ERR("config_module error (err: %d)", ret);
 	}
 
+//	buttons_enable(true);
+	LOG_INF("Buttons ENABLED");
 //void)motor_init();
 //otor_move(MOTOR_DRV_FORWARD, 3000);
 
   //bool forward = true;
 
 	while (1) {
-	buttons_enable(true);
-	LOG_INF("Buttons ENABLED");
-        k_sleep(K_MSEC(5000));
+        	k_sleep(K_MSEC(400));
+		button_print_pins();
 //        led_blink_fast(LED_GREEN, 10);
 //        led_blink_fast(LED_RED, 10);
 //        led_blink_fast(LED_BLUE, 10);
-	buttons_enable(false);
-	LOG_INF("Buttons disabled");
-        k_sleep(K_MSEC(5000));
 
     }
 #if 0
