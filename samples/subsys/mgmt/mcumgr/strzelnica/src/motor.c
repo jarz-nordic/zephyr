@@ -81,9 +81,9 @@ static void hbridge_enable(bool enable)
 		return;
 	}
 
-    if (enable) {
-        k_sleep(K_MSEC(10));
-    }
+	if (enable) {
+		k_sleep(K_MSEC(10));
+	}
 }
 
 static int hbridge_init(void)
@@ -98,9 +98,9 @@ static int hbridge_init(void)
 	}
 	ret = gpio_pin_configure(dev, HBRIDGE_EN_PIN,
 				 GPIO_OUTPUT_ACTIVE | HBRIDGE_EN_FLAGS);
-        if (ret < 0) {
-                return -ENXIO;
-        }
+	if (ret < 0) {
+		return -ENXIO;
+	}
 
 	hbridge_enable(false);
 
@@ -112,16 +112,16 @@ static int pwm_init(void)
 	const struct device *dev;
 
 	dev = device_get_binding(PWM0_LABEL);
-        if (dev == NULL) {
-                LOG_ERR("Cannot bind PWM0 device");
-                return -ENXIO;
-        }
+	if (dev == NULL) {
+		LOG_ERR("Cannot bind PWM0 device");
+		return -ENXIO;
+	}
 
 	dev = device_get_binding(PWM1_LABEL);
-        if (dev == NULL) {
-                LOG_ERR("Cannot bind PWM1 device");
-                return -ENXIO;
-        }
+	if (dev == NULL) {
+		LOG_ERR("Cannot bind PWM1 device");
+		return -ENXIO;
+	}
 
 	return 0;
 }
@@ -133,18 +133,17 @@ static int pwm_ch0_set(uint32_t duty_cycle)
 
 	dev = device_get_binding(PWM0_LABEL);
 	if (dev == NULL) {
-        	LOG_WRN("%s: Cannot bind PWM0 device", __FUNCTION__);
-                return -ENXIO;
+		LOG_WRN("%s: Cannot bind PWM0 device", __FUNCTION__);
+		return -ENXIO;
 	}
 
 	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, PWM_PERIOD_US, duty_cycle,
 				PWM0_FLAGS);
 	if (ret) {
-        	LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
+		LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
 	}
 
 	return ret;
-
 }
 
 static int pwm_ch1_set(uint32_t duty_cycle)
@@ -154,14 +153,14 @@ static int pwm_ch1_set(uint32_t duty_cycle)
 
 	dev = device_get_binding(PWM1_LABEL);
 	if (dev == NULL) {
-        	LOG_WRN("%s: Cannot bind PWM1 device", __FUNCTION__);
-                return -ENXIO;
+		LOG_WRN("%s: Cannot bind PWM1 device", __FUNCTION__);
+		return -ENXIO;
 	}
 
 	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, PWM_PERIOD_US, duty_cycle,
 				PWM1_FLAGS);
 	if (ret) {
-        	LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
+		LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
 	}
 
 	return ret;
@@ -169,7 +168,7 @@ static int pwm_ch1_set(uint32_t duty_cycle)
 
 static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 {
-    int ret = -EINVAL;
+	int ret = -EINVAL;
 
 	if (duty > PWM_PERIOD_US) {
 		LOG_WRN("%s: Max allowed pwm period: %d  | requested: %d",
@@ -177,34 +176,33 @@ static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 		duty = PWM_PERIOD_US;
 	}
 
-	switch (direction)
-	{
+	switch (direction) {
 	case MOTOR_DRV_FORWARD:
 		ret = pwm_ch0_set(duty);
-        if (ret) {
-            return ret;
-        }
+		if (ret) {
+			return ret;
+		}
 		ret = pwm_ch1_set(0);
 		break;
 	case MOTOR_DRV_BACKWARD:
 		ret = pwm_ch0_set(0);
-        if (ret) {
-            return ret;
-        }
+		if (ret) {
+			return ret;
+		}
 		ret = pwm_ch1_set(duty);
 		break;
 	case MOTOR_DRV_BRAKE:
 		ret = pwm_ch0_set(PWM_PERIOD_US);
-        if (ret) {
-            return ret;
-        }
+		if (ret) {
+			return ret;
+		}
 		ret = pwm_ch1_set(PWM_PERIOD_US);
 		break;
 	case MOTOR_DRV_NEUTRAL:
 		ret = pwm_ch0_set(0);
-        if (ret) {
-            return ret;
-        }
+		if (ret) {
+			return ret;
+		}
 		ret = pwm_ch1_set(0);
 		break;
 	default:
@@ -212,11 +210,6 @@ static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 	}
 
 	return ret;
-}
-
-static uint8_t calculate_speed(uint32_t speed)
-{
-	return 50;
 }
 
 static int check_direction(enum motor_drv_direction direction)
@@ -249,24 +242,24 @@ int motor_init(void)
 		LOG_ERR("Hbridge Init error: [%d]", ret);
 		return ret;
 	} else {
-        LOG_INF("Hbridge initialized");
-    }
+		LOG_INF("Hbridge initialized");
+	}
 
 	ret = pwm_init();
 	if (ret) {
 		LOG_ERR("PWM Init error: [%d]", ret);
 		return ret;
 	} else {
-        LOG_INF("PWM channels initialized");
-    }
+		LOG_INF("PWM channels initialized");
+	}
 
 	ret = encoder_init();
 	if (ret) {
 		LOG_ERR("encoder init error: [%d]", ret);
 		return ret;
 	} else {
-        LOG_INF("Encoder initialized");
-    }
+		LOG_INF("Encoder initialized");
+	}
 
 	motor_move(MOTOR_DRV_NEUTRAL, 0);
 
@@ -275,13 +268,12 @@ int motor_init(void)
 
 /* Function for driving the motor.
  *
- * @param[in] direction  movement direction
- * @param[in] speed	 impulses per second
+ * @param[in] direction	movement direction
+ * @param[in] speed	impulses per second
  */
 int motor_move(enum motor_drv_direction direction, uint32_t speed)
 {
-    static const char *lookup[] = {"NEUTRAL", "FORWARD", "BACKWARD", "BRAKE"};
-	uint32_t duty;
+	static const char *lookup[] = {"NEUTRAL", "FORWARD", "BACKWARD", "BRAKE"};
 	int ret;
 
 	ret = check_direction(direction);
@@ -290,16 +282,14 @@ int motor_move(enum motor_drv_direction direction, uint32_t speed)
 	}
 
 	hbridge_enable(true);
-//	duty = calculate_speed(speed);
-    duty = speed;
-	ret = pwms_set(direction, duty);
+	ret = pwms_set(direction, speed);
 
-    if (ret) {
-        LOG_ERR("%s: error: [%d]", __FUNCTION__, ret);
-    } else {
-        LOG_INF("Motor move.\n\rdirection: [%s]\r\nduty_cycle: [%d/%d]",
-                lookup[direction], duty, PWM_PERIOD_US);
-    }
+	if (ret) {
+		LOG_ERR("%s: error: [%d]", __FUNCTION__, ret);
+	} else {
+		LOG_INF("Motor move.\n\rdirection: [%s]\r\nduty_cycle: [%d/%d]",
+			lookup[direction], speed, PWM_PERIOD_US);
+	}
 
 	return ret;
 }
