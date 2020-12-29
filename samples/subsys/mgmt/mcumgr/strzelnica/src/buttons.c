@@ -70,12 +70,8 @@ static void button_speed_pressed(const struct device *dev,
 				 struct gpio_callback *cb,
 				 uint32_t pins)
 {
-	LOG_INF("%s", __FUNCTION__);
 	button_dev[BUTTON_NAME_SPEED].cnt = 0;
-	/* disable interrupts and start filtering process */
-	gpio_pin_interrupt_configure(button_dev[BUTTON_NAME_SPEED].dev,
-				     button_dev[BUTTON_NAME_SPEED].pin,
-				     GPIO_INT_DISABLE);
+	/* start filtering process */
 	k_delayed_work_submit(&button_dev[BUTTON_NAME_SPEED].work,
 			      BUTTON_DELAY_WORK_SAMPLING);
 }
@@ -100,7 +96,7 @@ static void button_speed_filter(struct k_work *work)
 			     button_dev[BUTTON_NAME_SPEED].pin);
 
 	/* gpio_pin_get returns true if button is pressed */
-	if (!state) {
+	if (state) {
 		button_dev[BUTTON_NAME_SPEED].cnt++;
 		k_delayed_work_submit(&button_dev[BUTTON_NAME_SPEED].work,
 				      BUTTON_DELAY_WORK_SAMPLING);
@@ -113,14 +109,17 @@ static void button_speed_filter(struct k_work *work)
 	if (button_dev[BUTTON_NAME_SPEED].cnt < BUTTON_PRESS_SHORT_CNT) {
 		/* Reject due to too short press */
 		return;
-	} else if (button_dev[BUTTON_NAME_SPEED].cnt < BUTTON_PRESS_LONG_CNT) {
+	}
+
+	button_enable(BUTTON_NAME_SPEED, false);
+
+	if (button_dev[BUTTON_NAME_SPEED].cnt < BUTTON_PRESS_LONG_CNT) {
 		app_notify_cb(BUTTON_NAME_SPEED, BUTTON_EVT_PRESSED_SHORT);
 	} else if (button_dev[BUTTON_NAME_SPEED].cnt < BUTTON_PRESS_STUCTK_CNT) {
 		app_notify_cb(BUTTON_NAME_SPEED, BUTTON_EVT_PRESSED_LONG);
 	} else {
 		app_notify_cb(BUTTON_NAME_SPEED, BUTTON_EVT_STUCKED);
 	}
-	button_enable(BUTTON_NAME_SPEED, false);
 }
 
 static void button_call_filter(struct k_work *work)
@@ -145,14 +144,17 @@ static void button_call_filter(struct k_work *work)
 	if (button_dev[BUTTON_NAME_CALL].cnt < BUTTON_PRESS_SHORT_CNT) {
 		/* Reject due to too short press */
 		return;
-	} else if (button_dev[BUTTON_NAME_CALL].cnt < BUTTON_PRESS_LONG_CNT) {
+	}
+
+	button_enable(BUTTON_NAME_CALL, false);
+
+	if (button_dev[BUTTON_NAME_CALL].cnt < BUTTON_PRESS_LONG_CNT) {
 		app_notify_cb(BUTTON_NAME_CALL, BUTTON_EVT_PRESSED_SHORT);
 	} else if (button_dev[BUTTON_NAME_CALL].cnt < BUTTON_PRESS_STUCTK_CNT) {
 		app_notify_cb(BUTTON_NAME_CALL, BUTTON_EVT_PRESSED_LONG);
 	} else {
 		app_notify_cb(BUTTON_NAME_CALL, BUTTON_EVT_STUCKED);
 	}
-	button_enable(BUTTON_NAME_CALL, false);
 }
 
 int buttons_init(button_hander_t button_cb)
@@ -233,9 +235,6 @@ int button_enable(enum button_name name, bool enable)
 		LOG_WRN("%s: bad name:[%d]", __FUNCTION__, name);
 		return -EINVAL;
 	}
-
-	/* variable used for filtering */
-	button_dev[name].cnt = 0;
 
 	flags = enable ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE;
 	ret = gpio_pin_interrupt_configure(button_dev[name].dev,

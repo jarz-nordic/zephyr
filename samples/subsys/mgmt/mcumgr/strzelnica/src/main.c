@@ -73,31 +73,43 @@ void buttons_cb(enum button_name name, enum button_event evt)
 		} else {
 			led_blink_slow(LED_GREEN, 3);
 		}
+		button_enable(BUTTON_NAME_CALL, true);
 	} else if (name == BUTTON_NAME_SPEED) {
 		if (evt == BUTTON_EVT_PRESSED_SHORT) {
 			led_blink_fast(LED_RED, 3);
 		} else {
 			led_blink_slow(LED_RED, 3);
 		}
+		button_enable(BUTTON_NAME_SPEED, true);
 	}
 }
 
-extern void button_print_pins(void);
 void main(void)
 {
-    int ret;
-	int rc = STATS_INIT_AND_REG(smp_svr_stats, STATS_SIZE_32,
-				    "smp_svr_stats");
+	int ret;
 
-	if (rc < 0) {
-		LOG_ERR("Error initializing stats system [%d]", rc);
+	/* The system work queue handles all incoming mcumgr requests.  Let the
+	 * main thread idle while the mcumgr server runs.
+	 */
+	ret = led_thread_init();
+	if (ret) {
+		LOG_ERR("led module not initialized. err:%d", ret);
+	}
+
+	ret = STATS_INIT_AND_REG(smp_svr_stats, STATS_SIZE_32,
+	 			 "smp_svr_stats");
+
+	if (ret < 0) {
+		led_blink_slow(LED_RED, 2);
+		LOG_ERR("Error initializing stats system [%d]", ret);
 	}
 
 	/* Register the built-in mcumgr command handlers. */
 #ifdef CONFIG_MCUMGR_CMD_FS_MGMT
-	rc = fs_mount(&littlefs_mnt);
-	if (rc < 0) {
-		LOG_ERR("Error mounting littlefs [%d]", rc);
+	ret = fs_mount(&littlefs_mnt);
+	if (ret < 0) {
+		led_blink_slow(LED_RED, 3);
+		LOG_ERR("Error mounting littlefs [%d]", ret);
 	}
 
 	fs_mgmt_register_group();
@@ -119,8 +131,9 @@ void main(void)
 #endif
 
 	if (IS_ENABLED(CONFIG_USB)) {
-		rc = usb_enable(NULL);
-		if (rc) {
+		ret = usb_enable(NULL);
+		if (ret) {
+			led_blink_slow(LED_RED, 4);
 			LOG_ERR("Failed to enable USB");
 			return;
 		}
@@ -129,15 +142,6 @@ void main(void)
 	 * compile which is convient when testing firmware upgrade.
 	 */
 	LOG_INF("build time: " __DATE__ " " __TIME__);
-
-
-	/* The system work queue handles all incoming mcumgr requests.  Let the
-	 * main thread idle while the mcumgr server runs.
-	 */
-	ret = led_thread_init();
-	if (ret) {
-		LOG_ERR("led module not initialized. err:%d", ret);
-	}
 
 	ret = buttons_init(buttons_cb);
 	if (ret) {
@@ -149,38 +153,36 @@ void main(void)
 		LOG_ERR("config_module error (err: %d)", ret);
 	}
 
-//	buttons_enable(true);
+	buttons_enable(true);
 	LOG_INF("Buttons ENABLED");
-//void)motor_init();
-//otor_move(MOTOR_DRV_FORWARD, 3000);
+
+	ret = motor_init();
+	if (ret) {
+		led_blink_slow(LED_RED, LED_BLINK_INFINITE);
+		return;
+	}
 
   //bool forward = true;
 
 	while (1) {
-        	k_sleep(K_MSEC(400));
-		button_print_pins();
-//        led_blink_fast(LED_GREEN, 10);
-//        led_blink_fast(LED_RED, 10);
-//        led_blink_fast(LED_BLUE, 10);
-
-    }
+		k_sleep(K_MSEC(400));
+	}
 #if 0
         int32_t samples;
 		k_sleep(K_MSEC(1500));
 
-        motor_move(MOTOR_DRV_BRAKE, 0);
+	motor_move(MOTOR_DRV_BRAKE, 0);
 		STATS_INC(smp_svr_stats, ticks);
 
-        k_sleep(K_MSEC(500));
-        if (forward) {
-	        motor_move(MOTOR_DRV_BACKWARD, 7000);
-        } else {
-	        motor_move(MOTOR_DRV_FORWARD, 7000);
-        }
-        (void)encoder_get(&samples);
-        forward = !forward;
-
+	k_sleep(K_MSEC(500));
+	if (forward) {
+		otor_move(MOTOR_DRV_BACKWARD, 7000);
+	} else {
+		motor_move(MOTOR_DRV_FORWARD, 7000);
 	}
+	(void)encoder_get(&samples);
+	forward = !forward;
+
 #endif
 }
 
@@ -211,6 +213,6 @@ static int cmd_konf_write(const struct shell *shell, size_t argc, char **argv)
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_konf,
 	SHELL_CMD(read, NULL, "Dictionary commands", cmd_konf_read),
 	SHELL_CMD(write, NULL, "Hexdump params command.", cmd_konf_write),
-    SHELL_SUBCMD_SET_END /* Array terminated. */
+	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 SHELL_CMD_ARG_REGISTER(konfig, &sub_konf, NULL, NULL, 2, 0);
