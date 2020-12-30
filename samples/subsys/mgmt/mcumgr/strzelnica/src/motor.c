@@ -57,7 +57,6 @@ LOG_MODULE_REGISTER(motor);
 #error "Unsupported board: PWM_CH1 devicetree alias is not defined"
 #endif
 
-#define PWM_PERIOD_US (10000u)
 
 struct motor_cb {
 	enum motor_drv_direction current_dir;
@@ -137,7 +136,7 @@ static int pwm_ch0_set(uint32_t duty_cycle)
 		return -ENXIO;
 	}
 
-	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, PWM_PERIOD_US, duty_cycle,
+	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, MOTOR_PWM_PERIOD_US, duty_cycle,
 				PWM0_FLAGS);
 	if (ret) {
 		LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
@@ -157,7 +156,7 @@ static int pwm_ch1_set(uint32_t duty_cycle)
 		return -ENXIO;
 	}
 
-	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, PWM_PERIOD_US, duty_cycle,
+	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, MOTOR_PWM_PERIOD_US, duty_cycle,
 				PWM1_FLAGS);
 	if (ret) {
 		LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
@@ -170,10 +169,10 @@ static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 {
 	int ret = -EINVAL;
 
-	if (duty > PWM_PERIOD_US) {
+	if (duty > MOTOR_PWM_PERIOD_US) {
 		LOG_WRN("%s: Max allowed pwm period: %d  | requested: %d",
-                __FUNCTION__, PWM_PERIOD_US, duty);
-		duty = PWM_PERIOD_US;
+                __FUNCTION__, MOTOR_PWM_PERIOD_US, duty);
+		duty = MOTOR_PWM_PERIOD_US;
 	}
 
 	switch (direction) {
@@ -192,11 +191,11 @@ static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 		ret = pwm_ch1_set(duty);
 		break;
 	case MOTOR_DRV_BRAKE:
-		ret = pwm_ch0_set(PWM_PERIOD_US);
+		ret = pwm_ch0_set(MOTOR_PWM_PERIOD_US);
 		if (ret) {
 			return ret;
 		}
-		ret = pwm_ch1_set(PWM_PERIOD_US);
+		ret = pwm_ch1_set(MOTOR_PWM_PERIOD_US);
 		break;
 	case MOTOR_DRV_NEUTRAL:
 		ret = pwm_ch0_set(0);
@@ -281,7 +280,7 @@ int motor_move(enum motor_drv_direction direction, uint32_t speed)
 		LOG_ERR("%s: error: [%d]", __FUNCTION__, ret);
 	} else {
 		LOG_INF("Motor move.\n\rdirection: [%s]\r\nduty_cycle: [%d/%d]",
-			lookup[direction], speed, PWM_PERIOD_US);
+			lookup[direction], speed, MOTOR_PWM_PERIOD_US);
 	}
 
 	return ret;
