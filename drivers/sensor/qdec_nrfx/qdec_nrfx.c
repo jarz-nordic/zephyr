@@ -22,8 +22,9 @@ LOG_MODULE_REGISTER(qdec_nrfx, CONFIG_SENSOR_LOG_LEVEL);
 
 
 struct qdec_nrfx_data {
-	int32_t                    acc;
-	sensor_trigger_handler_t data_ready_handler;
+	int32_t				acc;
+	int32_t			  	accdbl;
+	sensor_trigger_handler_t	data_ready_handler;
 #ifdef CONFIG_PM_DEVICE
 	uint32_t                    pm_state;
 #endif
@@ -35,17 +36,12 @@ static struct qdec_nrfx_data qdec_nrfx_data;
 DEVICE_DT_INST_DECLARE(0);
 
 
-static void accumulate(struct qdec_nrfx_data *data, int16_t acc)
+static inline void accumulate(struct qdec_nrfx_data *data, int32_t acc,
+				int32_t accdbl)
 {
 	unsigned int key = irq_lock();
-
-	bool overflow = ((acc > 0) && (ACC_MAX - acc < data->acc)) ||
-			((acc < 0) && (ACC_MIN - acc > data->acc));
-
-	if (!overflow) {
-		data->acc += acc;
-	}
-
+	data->acc += acc;
+	data->accdbl += accdbl;
 	irq_unlock(key);
 }
 
@@ -67,7 +63,7 @@ static int qdec_nrfx_sample_fetch(const struct device *dev,
 
 	nrfx_qdec_accumulators_read(&acc, &accdbl);
 
-	accumulate(data, acc);
+	accumulate(data, acc, accdbl);
 
 	return 0;
 }
@@ -79,6 +75,7 @@ static int qdec_nrfx_channel_get(const struct device *dev,
 	struct qdec_nrfx_data *data = &qdec_nrfx_data;
 	unsigned int key;
 	int32_t acc;
+	int32_t accdbl;
 	const int32_t steps = DT_INST_PROP(0, steps);
 
 	ARG_UNUSED(dev);
@@ -91,17 +88,15 @@ static int qdec_nrfx_channel_get(const struct device *dev,
 	key = irq_lock();
 	acc = data->acc;
 	data->acc = 0;
+	accdbl = data->accdbl;
+	data->accdbl = 0;
 	irq_unlock(key);
 
 	BUILD_ASSERT(steps > 0, "only positive number valid");
 	BUILD_ASSERT(steps <= 2148, "overflow possible");
 
-	val->val1 = (acc * FULL_ANGLE) / steps;
-	val->val2 = (acc * FULL_ANGLE) - (val->val1 * steps);
-	if (val->val2 != 0) {
-		val->val2 *= 1000000;
-		val->val2 /= steps;
-	}
+	val->val1 = acc;
+	val->val2 = accdbl;
 
 	return 0;
 }
@@ -139,7 +134,8 @@ static void qdec_nrfx_event_handler(nrfx_qdec_event_t event)
 
 	switch (event.type) {
 	case NRF_QDEC_EVENT_REPORTRDY:
-		accumulate(&qdec_nrfx_data, event.data.report.acc);
+		accumulate(&qdec_nrfx_data, event.data.report.acc,
+				 event.data.report.accdbl);
 
 		key = irq_lock();
 		handler = qdec_nrfx_data.data_ready_handler;
@@ -174,8 +170,8 @@ static void qdec_nrfx_gpio_ctrl(bool enable)
 static int qdec_nrfx_init(const struct device *dev)
 {
 	static const nrfx_qdec_config_t config = {
-		.reportper          = NRF_QDEC_REPORTPER_40,
-		.sampleper          = NRF_QDEC_SAMPLEPER_2048us,
+		.reportper          = NRF_QDEC_REPORTPER_120,
+		.sampleper          = NRF_QDEC_SAMPLEPER_128us,
 		.psela              = DT_INST_PROP(0, a_pin),
 		.pselb              = DT_INST_PROP(0, b_pin),
 #if DT_INST_NODE_HAS_PROP(0, led_pin)
