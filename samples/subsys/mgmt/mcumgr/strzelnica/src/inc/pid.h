@@ -22,10 +22,8 @@
 //----------------- INCLUDE DIRECTIVES FOR OTHER HEADERS ----------------------
 
 //-------------------- EXPORTED DEFINES FOR CONSTANTS -------------------------
-#define MAX_I_TERM  MAX_POWER
-
-#define K_P     20
-#define K_I     1
+#define K_P	20
+#define K_I	1
 
 //-------------------- EXPORTED DEFINE MACROS (#, ##)--------------------------
 
@@ -39,10 +37,10 @@
 //------------------------------- STRUCT --------------------------------------
 typedef struct
 {
-    uint16_t set_value;         // desired speed
-    uint16_t measured_value;
-    const uint16_t max_val;
-    const uint16_t min_val;
+	uint16_t set_value;         // desired speed
+	uint16_t measured_value;
+	const uint16_t max_val;
+	const uint16_t min_val;
 } pid_data_t;
 
 
