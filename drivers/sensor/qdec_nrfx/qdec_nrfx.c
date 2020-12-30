@@ -22,8 +22,9 @@ LOG_MODULE_REGISTER(qdec_nrfx, CONFIG_SENSOR_LOG_LEVEL);
 
 
 struct qdec_nrfx_data {
-	int32_t                    acc;
-	sensor_trigger_handler_t data_ready_handler;
+	int32_t				acc;
+	int32_t			  	accdbl;
+	sensor_trigger_handler_t	data_ready_handler;
 #ifdef CONFIG_PM_DEVICE
 	uint32_t                    pm_state;
 #endif
@@ -32,17 +33,15 @@ struct qdec_nrfx_data {
 
 static struct qdec_nrfx_data qdec_nrfx_data;
 
-static void accumulate(struct qdec_nrfx_data *data, int16_t acc)
+DEVICE_DT_INST_DECLARE(0);
+
+
+static inline void accumulate(struct qdec_nrfx_data *data, int32_t acc,
+				int32_t accdbl)
 {
 	unsigned int key = irq_lock();
-
-	bool overflow = ((acc > 0) && (ACC_MAX - acc < data->acc)) ||
-			((acc < 0) && (ACC_MIN - acc > data->acc));
-
-	if (!overflow) {
-		data->acc += acc;
-	}
-
+	data->acc += acc;
+	data->accdbl += accdbl;
 	irq_unlock(key);
 }
 
@@ -64,7 +63,7 @@ static int qdec_nrfx_sample_fetch(const struct device *dev,
 
 	nrfx_qdec_accumulators_read(&acc, &accdbl);
 
-	accumulate(data, acc);
+	accumulate(data, acc, accdbl);
 
 	return 0;
 }
