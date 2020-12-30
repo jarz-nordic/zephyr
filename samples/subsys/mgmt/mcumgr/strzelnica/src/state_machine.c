@@ -11,61 +11,118 @@
 #include "buttons.h"
 #include "encoder.h"
 #include "motor.h"
+#include "pid.h"
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
-
 LOG_MODULE_REGISTER(state_machine);
 
 #define THREAD_STACK_SIZE	2048
-#define THREAD_PRIORITY		K_PRIO_PREEMPT(1)
+#define THREAD_PRIORITY		K_PRIO_PREEMPT(10)
 
+#define ONE_ROTATION_PULSES		(64u)
 #define SM_SPEED_SAMPLE_MS		(K_MSEC(100u))
 #define SM_SPEED_FIRST_SAMPLE_MS	(K_MSEC(500u))
+
+#define LOW_SPEED_IP100US		250 // pulses per 100us
+#define HIGH_SPEED_IP100US		350 // pulses per 100us
+#define PULSES_MOTOR_STOP_THRESHOLD	4
+#define START_MOTOR_POWER		(MOTOR_PWM_PERIOD_US * 0.4)
+
+/* If current distance differs more than TRACK_ADAPTATION_PULSES with measured
+ * lap len update lap len.
+ */
+#define TRACK_ADAPTATION_PULSES		128u  // 1 rotations = 64 pulses = ~9cm
+#define TRACK_BRAKE_DISTANCE_PULSES	2135u // ~3m
 
 enum sm_states {
 	SM_INIT,
 	SM_CHECK_LICENSE,
 	SM_IDLE,
-	SM_MOTOR_FIRST_RUN,
-	SM_MOTOR_RUN,
+	SM_CALIBRATION_RUN,
+	SM_RUNNING,
 	SM_ERROR,
 	SM_BT_UPDATE,
 	SM_MAX
 };
 
-struct track {
-	bool direction;
-	uint32_t track_length;
-	uint32_t distance;	// current distance
+struct drive_info {
+	int32_t length;		// last measured track length
+	int32_t position;	// current position
+	int32_t brake_distance;	// position where motor must slowing down
+	uint32_t speed;
+	uint32_t slow_speed;
 };
 
-struct motor {
-	uint32_t requested_speed;
-	uint32_t duty_cycle;
-	bool active;
-};
-
-struct sm_cb {
-	struct k_delayed_work work;
-
-	enum sm_states state;
-	struct track track;
-	struct motor motor;
-};
-
-static struct sm_cb sm_cb;
+enum sm_states state;
+static bool button_pressed;
 static K_THREAD_STACK_DEFINE(thread_stack, THREAD_STACK_SIZE);
 static struct k_thread thread;
 
-static inline bool is_motor_active(void)
+static bool is_motor_stopped(int32_t val)
 {
-	return sm_cb.motor.active;
+	static int cnt = 0;
+	static const int debounce = 3;
+
+	if (abs(val) <= PULSES_MOTOR_STOP_THRESHOLD) {
+		cnt++;
+	} else {
+		cnt = 0;
+	}
+
+	return cnt > debounce;
 }
 
-static inline void motor_active_set(bool enable)
+static inline void update_lap_len(struct drive_info *info)
 {
-	sm_cb.motor.active = enable;
+	info->length = info->position;
+	LOG_INF("%s: %d", __FUNCTION__, info->length);
+}
+
+static inline bool is_brake_distance(const struct drive_info *info)
+{
+	/* oposite direction so len and position have different sign */
+	return abs(info->length + info->position) < info->brake_distance;
+}
+
+static void run_motor(struct drive_info *info,
+		      enum motor_drv_direction direction,
+		      uint32_t power)
+{
+	struct encoder_result sensor;
+	pid_data_t pid = {
+		.max_val = MOTOR_PWM_MAX_PERIOD_US,
+		.min_val = MOTOR_PWM_MIN_PERIOD_US,
+		.set_value = info->speed,
+	};
+
+	PID_Init(); // reset PID
+	motor_move(direction, power);
+	k_sleep(K_MSEC(200)); // wait for motor start
+	encoder_get(&sensor); // reset sensor readout
+
+	while (1) {
+		k_sleep(K_MSEC(100));
+
+		encoder_get(&sensor);
+		pid.measured_value = abs(sensor.acc);
+		info->position += sensor.acc;
+
+		if (is_brake_distance(info)) {
+			LOG_INF("!!!!!!!!!!!!!");
+			pid.set_value = info->slow_speed;
+		}
+
+		power = PID_Controller(&pid);
+
+		motor_move(direction, power);
+
+		if (is_motor_stopped(sensor.acc)) {
+			power = 0;
+			motor_move(MOTOR_DRV_NEUTRAL, power);
+			return;
+		}
+	}
 }
 
 void buttons_cb(enum button_name name, enum button_event evt)
@@ -85,43 +142,44 @@ void buttons_cb(enum button_name name, enum button_event evt)
 		}
 		button_enable(BUTTON_NAME_SPEED, true);
 	}
+
+	button_pressed = true;
 }
 
-static inline void state_set(enum sm_states state)
+static inline void state_set(enum sm_states new_state)
 {
 	if (state < SM_MAX) {
-		sm_cb.state = state;
+		state = new_state;
 	}
 }
 
-static void sample_motor(struct k_work *work)
+static inline bool is_lap_valid(const struct drive_info *info)
 {
-	struct encoder_result val;
-	static int32_t speed = 9000;
+	return abs(info->length) >= TRACK_BRAKE_DISTANCE_PULSES +
+				    ONE_ROTATION_PULSES;
+}
 
-	encoder_get(&val);
-	motor_move(MOTOR_DRV_BACKWARD, speed);
-	speed -= 20;
-
-	if ((val.acc <= 2) && (val.acc >= -2)) {
-		motor_move(MOTOR_DRV_NEUTRAL, 0);
-		return;
-	}
-
-	k_delayed_work_submit(&sm_cb.work, SM_SPEED_SAMPLE_MS);
+static inline void switch_driection(enum motor_drv_direction *dir)
+{
+	*dir = *dir == MOTOR_DRV_FORWARD ? MOTOR_DRV_BACKWARD :
+					   MOTOR_DRV_FORWARD;
 }
 
 static void state_machine_thread_fn(void)
 {
+	enum motor_drv_direction direction = MOTOR_DRV_FORWARD;
+	struct drive_info lap;
+	uint32_t power;
 	int ret;
 
+
 	while(1) {
-		switch (sm_cb.state) {
+		switch (state) {
 		case SM_INIT:
 			state_set(SM_CHECK_LICENSE);
 			break;
 		case SM_CHECK_LICENSE:
-			state_set(SM_MOTOR_FIRST_RUN);
+			LOG_INF("checking license");
 			ret = encoder_init(false);
 			if (ret) {
 				LOG_ERR("encoder init error: [%d]", ret);
@@ -129,19 +187,51 @@ static void state_machine_thread_fn(void)
 			} else {
 				LOG_INF("Encoder initialized");
 			}
-
-			motor_move(MOTOR_DRV_BACKWARD, 10000); //30%
-			k_delayed_work_submit(&sm_cb.work,
-					      SM_SPEED_FIRST_SAMPLE_MS);
+			state_set(SM_CALIBRATION_RUN);
 			break;
-		case SM_MOTOR_FIRST_RUN:
-			if (is_motor_active()) {
+		case SM_CALIBRATION_RUN:
+			lap.length = 0xFFFFFFFF; // unknown len
+			lap.position = 0;
+			lap.brake_distance = 0; // first run - const speed
+			lap.speed = LOW_SPEED_IP100US;
+			lap.slow_speed = LOW_SPEED_IP100US;
+			power = START_MOTOR_POWER;
+
+			run_motor(&lap, direction, power);
+
+			update_lap_len(&lap);
+			if (is_lap_valid(&lap)) {
+				LOG_DBG("lap valid");
+				state_set(SM_IDLE);
+				buttons_enable(true);
+			}
+			switch_driection(&direction);
+			break;
+		case SM_IDLE:
+			if (button_pressed) {
+				state_set(SM_RUNNING);
+				buttons_enable(false);
+				button_pressed = false;
 				break;
 			}
 			break;
-		case SM_IDLE:
-			break;
-		case SM_MOTOR_RUN:
+		case SM_RUNNING:
+			lap.position = 0;
+			lap.brake_distance = TRACK_BRAKE_DISTANCE_PULSES;
+			lap.speed = HIGH_SPEED_IP100US;
+			lap.slow_speed = LOW_SPEED_IP100US;
+
+			run_motor(&lap, direction, power);
+
+			update_lap_len(&lap);
+			if (is_lap_valid(&lap)) {
+				LOG_DBG("lap valid");
+				state_set(SM_IDLE);
+				buttons_enable(true);
+			} else {
+				state_set(SM_CALIBRATION_RUN);
+			}
+			switch_driection(&direction);
 			break;
 		case SM_ERROR:
 			break;
@@ -168,13 +258,11 @@ int state_machine_init(void)
 
 	buttons_enable(true);
 
-	k_delayed_work_init(&sm_cb.work, sample_motor);
-
 	k_thread_create(&thread, thread_stack,
 			THREAD_STACK_SIZE,
 			(k_thread_entry_t)state_machine_thread_fn,
 			NULL, NULL, NULL,
-			THREAD_PRIORITY, 0, K_MSEC(300));
+			THREAD_PRIORITY, 0, K_MSEC(100));
 	k_thread_name_set(&thread, "state_machine_thread");
 
 	return 0;
