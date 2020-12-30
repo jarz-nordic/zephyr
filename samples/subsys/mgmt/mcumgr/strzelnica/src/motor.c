@@ -253,13 +253,6 @@ int motor_init(void)
 		LOG_INF("PWM channels initialized");
 	}
 
-	ret = encoder_init();
-	if (ret) {
-		LOG_ERR("encoder init error: [%d]", ret);
-		return ret;
-	} else {
-		LOG_INF("Encoder initialized");
-	}
 
 	motor_move(MOTOR_DRV_NEUTRAL, 0);
 

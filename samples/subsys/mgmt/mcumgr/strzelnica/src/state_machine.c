@@ -21,7 +21,7 @@ LOG_MODULE_REGISTER(state_machine);
 #define THREAD_PRIORITY		K_PRIO_PREEMPT(1)
 
 #define SM_SPEED_SAMPLE_MS		(K_MSEC(100u))
-#define SM_SPEED_FIRST_SAMPLE_MS	(K_MSEC(300u))
+#define SM_SPEED_FIRST_SAMPLE_MS	(K_MSEC(500u))
 
 enum sm_states {
 	SM_INIT,
@@ -96,12 +96,14 @@ static inline void state_set(enum sm_states state)
 
 static void sample_motor(struct k_work *work)
 {
-	int32_t val;
-	int ret;
+	struct encoder_result val;
+	static int32_t speed = 9000;
 
-	ret = encoder_get(&val);
+	encoder_get(&val);
+	motor_move(MOTOR_DRV_BACKWARD, speed);
+	speed -= 20;
 
-	if ((val <= 2) && (val >= -2)) {
+	if ((val.acc <= 2) && (val.acc >= -2)) {
 		motor_move(MOTOR_DRV_NEUTRAL, 0);
 		return;
 	}
@@ -111,6 +113,7 @@ static void sample_motor(struct k_work *work)
 
 static void state_machine_thread_fn(void)
 {
+	int ret;
 
 	while(1) {
 		switch (sm_cb.state) {
@@ -119,7 +122,15 @@ static void state_machine_thread_fn(void)
 			break;
 		case SM_CHECK_LICENSE:
 			state_set(SM_MOTOR_FIRST_RUN);
-			motor_move(MOTOR_DRV_FORWARD, 3000); //30%
+			ret = encoder_init(false);
+			if (ret) {
+				LOG_ERR("encoder init error: [%d]", ret);
+				return;
+			} else {
+				LOG_INF("Encoder initialized");
+			}
+
+			motor_move(MOTOR_DRV_BACKWARD, 10000); //30%
 			k_delayed_work_submit(&sm_cb.work,
 					      SM_SPEED_FIRST_SAMPLE_MS);
 			break;
@@ -154,6 +165,8 @@ int state_machine_init(void)
 		LOG_ERR("buttons module not initialized. err:%d", ret);
 		return ret;
 	}
+
+	buttons_enable(true);
 
 	k_delayed_work_init(&sm_cb.work, sample_motor);
 

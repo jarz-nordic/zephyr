@@ -70,6 +70,7 @@ static void button_speed_pressed(const struct device *dev,
 				 struct gpio_callback *cb,
 				 uint32_t pins)
 {
+//	button_enable(BUTTON_NAME_SPEED, false); // disable interrupt
 	button_dev[BUTTON_NAME_SPEED].cnt = 0;
 	/* start filtering process */
 	k_delayed_work_submit(&button_dev[BUTTON_NAME_SPEED].work,
@@ -80,9 +81,10 @@ static void button_call_pressed(const struct device *dev,
 				struct gpio_callback *cb,
 				uint32_t pins)
 {
+//	button_enable(BUTTON_NAME_CALL, false); // disable interrupt
 	LOG_INF("%s", __FUNCTION__);
 	button_dev[BUTTON_NAME_CALL].cnt = 0;
-	/* disable interrupts and start filtering process */
+	/* start filtering process */
 	k_delayed_work_submit(&button_dev[BUTTON_NAME_CALL].work,
 			      BUTTON_DELAY_WORK_SAMPLING);
 }
@@ -92,6 +94,7 @@ static void button_speed_filter(struct k_work *work)
 {
 	int state;
 
+//	button_enable(BUTTON_NAME_SPEED, true);
 	state = gpio_pin_get(button_dev[BUTTON_NAME_SPEED].dev,
 			     button_dev[BUTTON_NAME_SPEED].pin);
 
@@ -126,6 +129,7 @@ static void button_call_filter(struct k_work *work)
 {
 	int state;
 
+//	button_enable(BUTTON_NAME_CALL, true);
 	state = gpio_pin_get(button_dev[BUTTON_NAME_CALL].dev,
 			     button_dev[BUTTON_NAME_CALL].pin);
 
