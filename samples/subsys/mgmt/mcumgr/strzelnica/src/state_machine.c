@@ -109,7 +109,6 @@ static void run_motor(struct drive_info *info,
 		info->position += sensor.acc;
 
 		if (is_brake_distance(info)) {
-			LOG_INF("!!!!!!!!!!!!!");
 			pid.set_value = info->slow_speed;
 		}
 

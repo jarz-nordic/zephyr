@@ -79,7 +79,7 @@ static int32_t m_sum_error;
 //=============================================================================
 void PID_Init(void)
 {
-    m_sum_error = 0;
+	m_sum_error = 0;
 }
 
 static int32_t k_i = K_I;
@@ -87,38 +87,38 @@ static int32_t k_p = K_P;
 //=============================================================================
 // FUNCTION: PID_Controller
 //=============================================================================
-uint16_t PID_Controller(pid_data_t * p_pid)
+uint16_t PID_Controller(pid_data_t *pid)
 {
-    int32_t error;
-    int32_t term_p;
-    int32_t regulator;
-    int32_t integrator;
+	int32_t error;
+	int32_t term_p;
+	int32_t regulator;
+	int32_t integrator;
 
-    if (NULL == p_pid)
-    {
-        return 0;
-    }
+	if (NULL == pid)
+	{
+		return 0;
+	}
 
-    error = (int32_t)((int32_t)p_pid->set_value - (int32_t)p_pid->measured_value);
-    term_p = k_p * error;
-    m_sum_error += error;
+	error = (int32_t)((int32_t)pid->set_value - (int32_t)pid->measured_value);
+	term_p = k_p * error;
+	m_sum_error += error;
 
 	LOG_INF("set = %d | measured = %d | sum_error = %d",
-		 p_pid->set_value, p_pid->measured_value, m_sum_error);
+		 pid->set_value, pid->measured_value, m_sum_error);
 
-    integrator = m_sum_error/k_i;
-    regulator = (term_p + integrator);
+	integrator = m_sum_error/k_i;
+	regulator = (term_p + integrator);
 
-    if(regulator > p_pid->max_val)
-    {
-        regulator = p_pid->max_val;
-    }
-    else if(regulator < p_pid->min_val)
-    {
-        regulator = p_pid->min_val;
-    }
+	if(regulator > pid->max_val)
+	{
+		regulator = pid->max_val;
+	}
+	else if(regulator < pid->min_val)
+	{
+		regulator = pid->min_val;
+	}
 
-    return regulator;
+	return regulator;
 }
 
 static int cmd_pid_kp(const struct shell *shell, size_t argc, char **argv)
@@ -135,16 +135,16 @@ static int cmd_pid_ki(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_pid(const struct shell *shell, size_t argc, char **argv)
 {
-	shell_print(shell, "kp = %d | ki = %d", k_p, k_i);
+	shell_print(shell, "K_P = %d | K_I = %d", k_p, k_i);
 	return 0;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_pid,
-	SHELL_CMD(kp, NULL, "Hexdump params command.", cmd_pid_kp),
-	SHELL_CMD(ki, NULL, "Hexdump params command.", cmd_pid_ki),
+	SHELL_CMD(kp, NULL, "Update K_P factor", cmd_pid_kp),
+	SHELL_CMD(ki, NULL, "Update K_I factor.", cmd_pid_ki),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
-SHELL_CMD_REGISTER(pid, &sub_pid, NULL, cmd_pid);
+SHELL_CMD_REGISTER(pid, &sub_pid, "Print PID parameters", cmd_pid);
 //=============================================================================
 // Date         ver     subm        Content
 //=============================================================================
