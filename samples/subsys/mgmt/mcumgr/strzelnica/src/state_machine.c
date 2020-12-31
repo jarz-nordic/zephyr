@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <zephyr.h>
 #include <stats/stats.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/gatt.h>
+
 #include "led.h"
 #include "buttons.h"
 #include "encoder.h"
@@ -18,7 +21,7 @@
 LOG_MODULE_REGISTER(state_machine);
 
 #define THREAD_STACK_SIZE	2048
-#define THREAD_PRIORITY		K_PRIO_PREEMPT(10)
+#define THREAD_PRIORITY		K_PRIO_PREEMPT(5)
 
 #define ONE_ROTATION_PULSES		(64u)
 #define SM_SPEED_SAMPLE_MS		(K_MSEC(100u))
@@ -42,7 +45,6 @@ enum sm_states {
 	SM_CALIBRATION_RUN,
 	SM_RUNNING,
 	SM_ERROR,
-	SM_BT_UPDATE,
 	SM_MAX
 };
 
@@ -234,8 +236,6 @@ static void state_machine_thread_fn(void)
 			break;
 		case SM_ERROR:
 			break;
-		case SM_BT_UPDATE:
-			break;
 		default:
 			LOG_ERR("%s: unexpected SM state.", __FUNCTION__);
 			break;
@@ -266,4 +266,84 @@ int state_machine_init(void)
 
 	return 0;
 }
+
+enum sm_states state_machine_get_state(void)
+{
+	led_blink_fast(LED_BLUE, 2);
+	return state;
+}
+
+int state_machine_bt_start(void)
+{
+
+	return 0;
+}
+
+static ssize_t bt_start_lap(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			    const void *buf, uint16_t len, uint16_t offset,
+			    uint8_t flags)
+{
+	const char *msg;
+
+	if (state != SM_IDLE) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	msg = buf;
+
+	if ((*msg == '1') || (*msg == 1)) {
+		led_blink_fast(LED_BLUE, 2);
+		state_set(SM_RUNNING);
+		buttons_enable(false);
+		button_pressed = false;
+	}
+
+	return 0;
+}
+
+static ssize_t bt_show_state(struct bt_conn *conn,
+				const struct bt_gatt_attr *attr,
+				void *buf, uint16_t len, uint16_t offset)
+{
+	const char *lookup[] = {"Init", "Check License", "idle",
+				"calibration_run", "running", "error"};
+	const char *value = lookup[state];
+
+	led_blink_fast(LED_BLUE, 2);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, value,
+				 strlen(value));
+}
+
+static struct bt_uuid_128 name_uuid = BT_UUID_INIT_128(
+	0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
+	0x78, 0x56, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12);
+
+static struct bt_uuid_128 name_enc_uuid = BT_UUID_INIT_128(
+	0xf1, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
+	0x78, 0x56, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12);
+
+#define CPF_FORMAT_UTF8 0x19
+
+static const struct bt_gatt_cpf name_cpf = {
+	.format = CPF_FORMAT_UTF8,
+};
+
+/* Vendor Primary Service Declaration */
+BT_GATT_SERVICE_DEFINE(sm_service,
+	/* Vendor Primary Service Declaration */
+	BT_GATT_PRIMARY_SERVICE(&name_uuid),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ,
+			       BT_GATT_PERM_READ_AUTHEN,
+			       bt_show_state, NULL, NULL),
+	BT_GATT_CUD("SM State", BT_GATT_PERM_READ),
+	BT_GATT_CPF(&name_cpf),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       NULL, bt_start_lap, NULL),
+	BT_GATT_CUD("BT Button", BT_GATT_PERM_READ),
+	BT_GATT_CPF(&name_cpf),
+);
 

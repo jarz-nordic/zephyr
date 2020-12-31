@@ -9,6 +9,7 @@
 #include <bluetooth/conn.h>
 #include <bluetooth/gatt.h>
 #include <mgmt/mcumgr/smp_bt.h>
+#include "state_machine.h"
 
 #include "led.h"
 
@@ -53,8 +54,13 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 	LOG_INF("Connected %s\n", addr);
 
+	led_blink_slow(LED_BLUE, 3);
+
 	if (bt_conn_set_security(conn, BT_SECURITY_L4)) {
-		printk("Failed to set security\n");
+		led_blink_fast(LED_RED, 3);
+		LOG_INF("Failed to set security\n");
+	} else {
+		led_blink_fast(LED_GREEN, 3);
 	}
 }
 
