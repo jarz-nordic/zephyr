@@ -10,6 +10,8 @@
 #include <bluetooth/gatt.h>
 #include <mgmt/mcumgr/smp_bt.h>
 
+#include "led.h"
+
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
 LOG_MODULE_REGISTER(smp_bt_sample);
@@ -40,22 +42,75 @@ static void advertise(struct k_work *work)
 
 static void connected(struct bt_conn *conn, uint8_t err)
 {
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
 	if (err) {
-		LOG_ERR("Connection failed (err 0x%02x)", err);
-	} else {
-		LOG_INF("Connected");
+		LOG_INF("Failed to connect to %s (%u)\n", addr, err);
+		return;
+	}
+
+	LOG_INF("Connected %s\n", addr);
+
+	if (bt_conn_set_security(conn, BT_SECURITY_L4)) {
+		printk("Failed to set security\n");
 	}
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
 	LOG_INF("Disconnected (reason 0x%02x)", reason);
 	k_work_submit(&advertise_work);
+}
+
+static void security_changed(struct bt_conn *conn, bt_security_t level,
+			     enum bt_security_err err)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	if (!err) {
+		LOG_INF("Security changed: %s level %u\n", addr, level);
+	} else {
+		LOG_INF("Security failed: %s level %u err %d\n", addr, level,
+			err);
+	}
+}
+
+static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	LOG_INF("Passkey for %s: %06u\n", addr, passkey);
 }
 
 static struct bt_conn_cb conn_callbacks = {
 	.connected = connected,
 	.disconnected = disconnected,
+	.security_changed = security_changed,
+};
+
+static void auth_cancel(struct bt_conn *conn)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	LOG_INF("Pairing cancelled: %s\n", addr);
+}
+
+static struct bt_conn_auth_cb auth_cb_display = {
+	.passkey_display = auth_passkey_display,
+	.passkey_entry = NULL,
+	.cancel = auth_cancel,
 };
 
 static void bt_ready(int err)
@@ -83,6 +138,7 @@ void start_smp_bluetooth(void)
 	}
 
 	bt_conn_cb_register(&conn_callbacks);
+	bt_conn_auth_cb_register(&auth_cb_display);
 
 	/* Initialize the Bluetooth mcumgr transport. */
 	smp_bt_register();
