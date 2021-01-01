@@ -7,18 +7,25 @@ LOG_MODULE_REGISTER(config_module);
 
 #include "config.h"
 
-struct engine_cfg {
+struct device_cfg {
 	uint32_t speed_max;
 	uint32_t speed_min;
 	uint32_t distance_min;
+	uint32_t distance_brake;
+	uint32_t pid_kp;
+	uint32_t pid_ki;
+	uint32_t bt_pswd;
 };
-struct engine_cfg engine_cfg;
+
+
+static struct device_cfg device_cfg;
 static bool initialized;
+static uint32_t crc;
 
 static int cfg_handle_set(const char *name, size_t len,
 			  settings_read_cb read_cb, void *cb_arg)
 {
-	struct engine_cfg *p = &engine_cfg;
+	struct device_cfg *p = &device_cfg;
 	const char *next;
 	size_t name_len;
 	int rc;
@@ -41,6 +48,27 @@ static int cfg_handle_set(const char *name, size_t len,
 				     sizeof(p->distance_min));
 			return 0;
 		}
+		if (!strncmp(name, "distance_brake", name_len)) {
+			rc = read_cb(cb_arg, &p->distance_brake,
+				     sizeof(p->distance_brake));
+			return 0;
+		}
+		if (!strncmp(name, "pid_kp", name_len)) {
+			rc = read_cb(cb_arg, &p->pid_kp, sizeof(p->pid_kp));
+			return 0;
+		}
+		if (!strncmp(name, "pid_ki", name_len)) {
+			rc = read_cb(cb_arg, &p->pid_ki, sizeof(p->pid_ki));
+			return 0;
+		}
+		if (!strncmp(name, "bt_pswd", name_len)) {
+			rc = read_cb(cb_arg, &p->bt_pswd, sizeof(p->bt_pswd));
+			return 0;
+		}
+		if (!strncmp(name, "crc", name_len)) {
+			rc = read_cb(cb_arg, &crc, sizeof(crc));
+			return 0;
+		}
         return 0;
 	}
 
@@ -50,7 +78,7 @@ static int cfg_handle_set(const char *name, size_t len,
 static int cfg_handle_export(int (*cb)(const char *name,
 			       const void *value, size_t val_len))
 {
-	const struct engine_cfg *p = &engine_cfg;
+	const struct device_cfg *p = &device_cfg;
 
 	LOG_INF("export keys under <CFG> handler");
 
@@ -58,6 +86,12 @@ static int cfg_handle_export(int (*cb)(const char *name,
 	(void)cb("engine/cfg/speed_min", &p->speed_min, sizeof(p->speed_min));
 	(void)cb("engine/cfg/distance_min", &p->distance_min,
 		 sizeof(p->distance_min));
+	(void)cb("engine/cfg/distance_brake", &p->distance_brake,
+		 sizeof(p->distance_brake));
+	(void)cb("engine/cfg/pid_kp", &p->pid_kp, sizeof(p->pid_kp));
+	(void)cb("engine/cfg/pid_ki", &p->pid_ki, sizeof(p->pid_ki));
+	(void)cb("engine/cfg/bt_pswd", &p->bt_pswd, sizeof(p->bt_pswd));
+	(void)cb("engine/cfg/crc", &crc, sizeof(crc));
 
 	return 0;
 }
@@ -82,11 +116,6 @@ int config_module_init(void)
 {
 	int rc;
 
-	LOG_WRN("max=%d|min=%d|dist=%d",
-			engine_cfg.speed_max,
-		       	engine_cfg.speed_min,
-			engine_cfg.distance_min);
-
 	rc = settings_subsys_init();
 	if (rc != 0) {
 		LOG_ERR("Initialization: fail (err %d)", rc);
@@ -95,20 +124,41 @@ int config_module_init(void)
 
 	rc = settings_load();
 
-	if (rc == 0) {
-		initialized = true;
+	if (rc != 0) {
+		LOG_ERR("Settings load fail (err %d)", rc);
+		return rc;
 	}
-	LOG_WRN("max=%d|min=%d|dist=%d",
-			engine_cfg.speed_max,
-		       	engine_cfg.speed_min,
-			engine_cfg.distance_min);
+
+	if (crc == CONFIG_MAGIC_WORD) {
+		initialized = true;
+		LOG_INF("Settings loaded from flash.");
+		return rc;
+	}
+
+	device_cfg.speed_max = CONFIG_DEFAULT_SPEED_MAX;
+	device_cfg.speed_min = CONFIG_PARAM_SPEED_MIN;
+	device_cfg.distance_min = CONFIG_PARAM_DISTANCE_MIN;
+	device_cfg.distance_brake = CONFIG_DEFAULT_DISTANCE_BRAKE;
+	device_cfg.pid_kp = CONFIG_DEFAULT_PID_KP;
+	device_cfg.pid_ki = CONFIG_DEFAULT_PID_KI;
+	device_cfg.bt_pswd = 253678;
+
+	crc = CONFIG_MAGIC_WORD;
+
+	rc = settings_save();
+
+	if (rc) {
+		LOG_INF("Cannot save default config in flash");
+	} else {
+		LOG_INF("Default settings saved");
+	}
 
 	return rc;
 }
 
 int config_param_write(enum config_param_type type, const void *const data)
 {
-	struct engine_cfg *p = &engine_cfg;
+	struct device_cfg *p = &device_cfg;
 	int rc;
 
 	if (!initialized) {
@@ -141,6 +191,41 @@ int config_param_write(enum config_param_type type, const void *const data)
 					sizeof(uint32_t));
 		LOG_INF("writing distance_min: %d", rc);
 		break;
+	case CONFIG_PARAM_DISTANCE_BRAKE:
+		p->distance_brake = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/distance_brake",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing distance_brake: %d", rc);
+		break;
+	case CONFIG_PARAM_PID_KP:
+		p->pid_kp = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/pid_kp",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing pid_kp: %d", rc);
+		break;
+	case CONFIG_PARAM_PID_KI:
+		p->pid_ki = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/pid_ki",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing pid_ki: %d", rc);
+		break;
+	case CONFIG_PARAM_BT_AUTH_PSWD:
+		p->bt_pswd = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/bt_pswd",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing bt_pswd: %d", rc);
+		break;
+	case CONFIG_CHECKSUM:
+		crc = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/crc",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing crc: %d", rc);
+		break;
 	default:
 		LOG_INF("type is not valid");
 		return -EINVAL;
@@ -151,7 +236,7 @@ int config_param_write(enum config_param_type type, const void *const data)
 
 const void *config_param_get(enum config_param_type type)
 {
-	const struct engine_cfg *p = &engine_cfg;
+	const struct device_cfg *p = &device_cfg;
 
 	if (!initialized) {
 		return NULL;
@@ -164,6 +249,16 @@ const void *config_param_get(enum config_param_type type)
 		return &p->speed_min;
 	case CONFIG_PARAM_DISTANCE_MIN:
 		return &p->distance_min;
+	case CONFIG_PARAM_DISTANCE_BRAKE:
+		return &p->distance_brake;
+	case CONFIG_PARAM_PID_KP:
+		return &p->pid_kp;
+	case CONFIG_PARAM_PID_KI:
+		return &p->pid_ki;
+	case CONFIG_PARAM_BT_AUTH_PSWD:
+		return &p->bt_pswd;
+	case CONFIG_CHECKSUM:
+		return &crc;
 	default:
 		break;
 	}
