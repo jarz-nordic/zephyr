@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2020 Jakub Rzeszutko
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <stdbool.h>
 #include <zephyr.h>
 #include <sys/crc.h>
@@ -117,6 +123,23 @@ SETTINGS_STATIC_HANDLER_DEFINE(cfg, "engine/cfg", cfg_handle_get,
 			       cfg_handle_set, cfg_handle_commit,
 			       cfg_handle_export);
 
+static int crc_update(void)
+{
+	const uint8_t *ptr;
+	uint16_t crc_new;
+	int rc = 0;
+
+	ptr = (const uint8_t *)&device_cfg;
+	crc_new = crc16(ptr, sizeof(device_cfg), POLYNOMIAL, 0, 0);
+
+	if (crc_new != crc) {
+		crc = crc_new;
+		rc = config_param_write(CONFIG_CHECKSUM, &crc);
+	}
+
+	return rc;
+}
+
 int config_module_init(void)
 {
 	int rc;
@@ -227,7 +250,7 @@ int config_param_write(enum config_param_type type, const void *const data)
 		return -EINVAL;
 	}
 
-	return rc;
+	return crc_update();
 }
 
 const void *config_param_get(enum config_param_type type)

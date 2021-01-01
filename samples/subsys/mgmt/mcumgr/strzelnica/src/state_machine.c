@@ -54,6 +54,7 @@ static struct drive_info lap;
 static bool button_pressed;
 static K_THREAD_STACK_DEFINE(thread_stack, THREAD_STACK_SIZE);
 static struct k_thread thread;
+static struct k_mutex state_mtx;
 
 static bool is_motor_stopped(int32_t val)
 {
@@ -144,7 +145,9 @@ void buttons_cb(enum button_name name, enum button_event evt)
 static inline void state_set(enum sm_states new_state)
 {
 	if (state < SM_MAX) {
+		k_mutex_lock(&state_mtx, K_FOREVER);
 		state = new_state;
+		k_mutex_unlock(&state_mtx);
 	}
 }
 
@@ -223,6 +226,7 @@ static void state_machine_thread_fn(void)
 			lap.speed = *ptr;
 			ptr = config_param_get(CONFIG_PARAM_SPEED_MIN);
 			lap.slow_speed = *ptr;
+			power = START_MOTOR_POWER;
 
 			run_motor(&lap, direction, power);
 
@@ -258,6 +262,7 @@ int state_machine_init(void)
 	}
 
 	buttons_enable(true);
+	k_mutex_init(&state_mtx);
 
 	k_thread_create(&thread, thread_stack,
 			THREAD_STACK_SIZE,
@@ -265,18 +270,6 @@ int state_machine_init(void)
 			NULL, NULL, NULL,
 			THREAD_PRIORITY, 0, K_MSEC(100));
 	k_thread_name_set(&thread, "state_machine_thread");
-
-	return 0;
-}
-
-enum sm_states state_machine_get_state(void)
-{
-	led_blink_fast(LED_BLUE, 2);
-	return state;
-}
-
-int state_machine_bt_start(void)
-{
 
 	return 0;
 }
@@ -293,7 +286,7 @@ static ssize_t bt_start_lap(struct bt_conn *conn, const struct bt_gatt_attr *att
 
 	msg = buf;
 
-	if ((*msg == '1') || (*msg == 1)) {
+	if (*msg == 1) {
 		led_blink_fast(LED_BLUE, 2);
 		state_set(SM_RUNNING);
 		buttons_enable(false);
@@ -304,8 +297,8 @@ static ssize_t bt_start_lap(struct bt_conn *conn, const struct bt_gatt_attr *att
 }
 
 static ssize_t bt_show_state(struct bt_conn *conn,
-				const struct bt_gatt_attr *attr,
-				void *buf, uint16_t len, uint16_t offset)
+			     const struct bt_gatt_attr *attr,
+			     void *buf, uint16_t len, uint16_t offset)
 {
 	const char *lookup[] = {"Init", "Check License", "idle",
 				"calibration_run", "running", "error"};
@@ -318,8 +311,8 @@ static ssize_t bt_show_state(struct bt_conn *conn,
 }
 
 static ssize_t bt_show_lap_length(struct bt_conn *conn,
-				const struct bt_gatt_attr *attr,
-				void *buf, uint16_t len, uint16_t offset)
+				  const struct bt_gatt_attr *attr,
+				  void *buf, uint16_t len, uint16_t offset)
 {
 	int32_t val = lap.length;
 
@@ -328,20 +321,224 @@ static ssize_t bt_show_lap_length(struct bt_conn *conn,
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, &val,
 				 sizeof(val));
 }
-#if 0
-static ssize_t bt_read_max_speed(struct bt_conn *conn,
-				const struct bt_gatt_attr *attr,
-				void *buf, uint16_t len, uint16_t offset)
+
+static ssize_t bt_get_speed_fast(struct bt_conn *conn,
+				 const struct bt_gatt_attr *attr,
+				 void *buf, uint16_t len, uint16_t offset)
 {
-	const uint32_t *value;
+	const uint32_t *val;
+
+	val = (const uint32_t *)config_param_get(CONFIG_PARAM_SPEED_MAX);
 
 	led_blink_fast(LED_BLUE, 2);
-	value = config_param_get(CONFIG_PARAM_DISTANCE_MAX);
 
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, val,
+				 sizeof(val));
+}
 
-	return bt_gatt_attr_read(conn, attr, buf, len, offset, value,
-				 strlen(value));
-#endif
+static ssize_t bt_set_speed_fast(struct bt_conn *conn,
+				 const struct bt_gatt_attr *attr,
+				 const void *buf, uint16_t len, uint16_t offset,
+				 uint8_t flags)
+{
+	const uint32_t *msg;
+
+	if (k_mutex_lock(&state_mtx, K_NO_WAIT)) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	if (state != SM_IDLE) {
+		k_mutex_unlock(&state_mtx);
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	// semafor
+	msg = (const uint32_t *)buf;
+	config_param_write(CONFIG_PARAM_SPEED_MAX, msg);
+	k_mutex_unlock(&state_mtx);
+	LOG_INF("bt speed = %d", *msg);
+
+	return 0;
+}
+
+static ssize_t bt_get_speed_slow(struct bt_conn *conn,
+				 const struct bt_gatt_attr *attr,
+				 void *buf, uint16_t len, uint16_t offset)
+{
+	const uint32_t *val;
+
+	val = (const uint32_t *)config_param_get(CONFIG_PARAM_SPEED_MIN);
+	led_blink_fast(LED_BLUE, 2);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, val,
+				 sizeof(val));
+}
+
+static ssize_t bt_set_speed_slow(struct bt_conn *conn,
+				 const struct bt_gatt_attr *attr,
+				 const void *buf, uint16_t len, uint16_t offset,
+				 uint8_t flags)
+{
+	const uint32_t *msg;
+
+	if (k_mutex_lock(&state_mtx, K_NO_WAIT)) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	if (state != SM_IDLE) {
+		k_mutex_unlock(&state_mtx);
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	// semafor
+	msg = (const uint32_t *)buf;
+	config_param_write(CONFIG_PARAM_SPEED_MIN, msg);
+	k_mutex_unlock(&state_mtx);
+	LOG_INF("bt speed_slow = %d", *msg);
+
+	return 0;
+}
+
+static ssize_t bt_get_brake_distance(struct bt_conn *conn,
+				     const struct bt_gatt_attr *attr,
+				     void *buf, uint16_t len, uint16_t offset)
+{
+	const uint32_t *val;
+
+	val = (const uint32_t *)config_param_get(CONFIG_PARAM_DISTANCE_BRAKE);
+
+	led_blink_fast(LED_BLUE, 2);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, val,
+				 sizeof(*val));
+}
+
+static ssize_t bt_set_brake_distance(struct bt_conn *conn,
+				     const struct bt_gatt_attr *attr,
+				     const void *buf, uint16_t len, uint16_t offset,
+				     uint8_t flags)
+{
+	const uint32_t *msg;
+
+	if (k_mutex_lock(&state_mtx, K_NO_WAIT)) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	if (state != SM_IDLE) {
+		k_mutex_unlock(&state_mtx);
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	// semafor
+	msg = (const uint32_t *)buf;
+	config_param_write(CONFIG_PARAM_DISTANCE_BRAKE, msg);
+	k_mutex_unlock(&state_mtx);
+	LOG_INF("brake distance = %d", *msg);
+
+	return 0;
+}
+
+static ssize_t bt_get_pid_kp(struct bt_conn *conn,
+			     const struct bt_gatt_attr *attr,
+			     void *buf, uint16_t len, uint16_t offset)
+{
+	const uint32_t *val;
+
+	val = (const uint32_t *)config_param_get(CONFIG_PARAM_PID_KP);
+
+	led_blink_fast(LED_BLUE, 2);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, val,
+				 sizeof(val));
+}
+
+static ssize_t bt_set_pid_kp(struct bt_conn *conn,
+			     const struct bt_gatt_attr *attr,
+			     const void *buf, uint16_t len, uint16_t offset,
+			     uint8_t flags)
+{
+	const uint32_t *msg;
+
+	if (k_mutex_lock(&state_mtx, K_NO_WAIT)) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	if (state != SM_IDLE) {
+		k_mutex_unlock(&state_mtx);
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	// semafor
+	msg = (const uint32_t *)buf;
+	config_param_write(CONFIG_PARAM_PID_KP, msg);
+	k_mutex_unlock(&state_mtx);
+	LOG_INF("pid kp = %d", *msg);
+
+	return 0;
+}
+
+static ssize_t bt_get_pid_ki(struct bt_conn *conn,
+			     const struct bt_gatt_attr *attr,
+			     void *buf, uint16_t len, uint16_t offset)
+{
+	const uint32_t *val;
+
+	val = (const uint32_t *)config_param_get(CONFIG_PARAM_PID_KI);
+
+	led_blink_fast(LED_BLUE, 2);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, val,
+				 sizeof(val));
+}
+
+static ssize_t bt_set_pid_ki(struct bt_conn *conn,
+			     const struct bt_gatt_attr *attr,
+			     const void *buf, uint16_t len, uint16_t offset,
+			     uint8_t flags)
+{
+	const uint32_t *msg;
+
+	if (k_mutex_lock(&state_mtx, K_NO_WAIT)) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	if (state != SM_IDLE) {
+		k_mutex_unlock(&state_mtx);
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	// semafor
+	msg = (const uint32_t *)buf;
+	config_param_write(CONFIG_PARAM_PID_KI, msg);
+	k_mutex_unlock(&state_mtx);
+	LOG_INF("pid ki = %d", *msg);
+
+	return 0;
+}
+
+static ssize_t bt_bt_pswd_set(struct bt_conn *conn,
+			const struct bt_gatt_attr *attr,
+			const void *buf, uint16_t len, uint16_t offset,
+			uint8_t flags)
+{
+	const uint32_t *msg;
+
+	if (k_mutex_lock(&state_mtx, K_NO_WAIT)) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	if (state != SM_IDLE) {
+		return BT_GATT_ERR(BT_ATT_ERR_PROCEDURE_IN_PROGRESS);
+	}
+
+	// semafor
+	msg = (const uint32_t *)buf;
+	config_param_write(CONFIG_PARAM_BT_AUTH_PSWD, msg);
+	k_mutex_unlock(&state_mtx);
+	LOG_INF("bt pswd set");
+
+	return 0;
+}
 
 static struct bt_uuid_128 name_uuid = BT_UUID_INIT_128(
 	0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
@@ -379,5 +576,47 @@ BT_GATT_SERVICE_DEFINE(sm_service,
 			       bt_show_lap_length, NULL, NULL),
 	BT_GATT_CUD("Lap length", BT_GATT_PERM_READ),
 	BT_GATT_CPF(&name_cpf),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_READ_AUTHEN |
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       bt_get_speed_fast, bt_set_speed_fast, NULL),
+	BT_GATT_CUD("Speed fast", BT_GATT_PERM_READ),
+	BT_GATT_CPF(&name_cpf),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_READ_AUTHEN |
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       bt_get_speed_slow, bt_set_speed_slow, NULL),
+	BT_GATT_CUD("Speed slow", BT_GATT_PERM_READ),
+	BT_GATT_CPF(&name_cpf),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_READ_AUTHEN |
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       bt_get_brake_distance, bt_set_brake_distance,
+			       NULL),
+	BT_GATT_CUD("Brake distance", BT_GATT_PERM_READ),
+	BT_GATT_CPF(&name_cpf),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_READ_AUTHEN |
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       bt_get_pid_kp, bt_set_pid_kp,
+			       NULL),
+	BT_GATT_CUD("PID K_P", BT_GATT_PERM_READ),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_READ_AUTHEN |
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       bt_get_pid_ki, bt_set_pid_ki,
+			       NULL),
+	BT_GATT_CUD("PID K_I", BT_GATT_PERM_READ),
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_WRITE_AUTHEN,
+			       NULL, bt_bt_pswd_set,
+			       NULL),
+	BT_GATT_CUD("BT PSWD", BT_GATT_PERM_READ),
 );
 
