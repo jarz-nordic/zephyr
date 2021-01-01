@@ -31,7 +31,6 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
 
-#include <shell/shell.h>
 #include "config.h"
 #include "motor.h"
 #include "common.h"
@@ -142,34 +141,3 @@ void main(void)
 		LOG_ERR("State machine init error (err: %d)", ret);
 	}
 }
-
-static int cmd_konf_read(const struct shell *shell, size_t argc, char **argv)
-{
-	const uint32_t *speed = config_param_get(CONFIG_PARAM_SPEED_MAX);
-
-	shell_print(shell, "new value = %d", *speed);
-
-	return 0;
-}
-
-static int cmd_konf_write(const struct shell *shell, size_t argc, char **argv)
-{
-	int rc;
-	uint32_t data;
-	uint32_t param;
-
-	param = (int)strtol(argv[1], NULL, 10);
-	data = (int)strtol(argv[2], NULL, 10);
-
-	rc = config_param_write(param, &data);
-
-	shell_print(shell, "rc = %d", rc);
-	return 0;
-}
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_konf,
-	SHELL_CMD(read, NULL, "Dictionary commands", cmd_konf_read),
-	SHELL_CMD(write, NULL, "Hexdump params command.", cmd_konf_write),
-	SHELL_SUBCMD_SET_END /* Array terminated. */
-);
-SHELL_CMD_ARG_REGISTER(konfig, &sub_konf, NULL, NULL, 2, 0);

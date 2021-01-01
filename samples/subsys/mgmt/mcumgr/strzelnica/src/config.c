@@ -1,11 +1,16 @@
-#include <zephyr.h>
-#include <settings/settings.h>
 #include <stdbool.h>
+#include <zephyr.h>
+#include <sys/crc.h>
+#include <settings/settings.h>
+#include <shell/shell.h>
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(config_module);
 
 #include "config.h"
+
+/* CRC16 polynomial */
+#define POLYNOMIAL 0x8005
 
 struct device_cfg {
 	uint32_t speed_max;
@@ -115,43 +120,34 @@ SETTINGS_STATIC_HANDLER_DEFINE(cfg, "engine/cfg", cfg_handle_get,
 int config_module_init(void)
 {
 	int rc;
+	uint16_t calc_crc;
+	const uint8_t *ptr;
 
 	rc = settings_subsys_init();
 	if (rc != 0) {
 		LOG_ERR("Initialization: fail (err %d)", rc);
-		return rc;
+		goto default_settings;
 	}
 
 	rc = settings_load();
 
 	if (rc != 0) {
 		LOG_ERR("Settings load fail (err %d)", rc);
-		return rc;
+		goto default_settings;
 	}
 
-	if (crc == CONFIG_MAGIC_WORD) {
+	ptr = (const uint8_t *)&device_cfg;
+	calc_crc = crc16(ptr, sizeof(device_cfg), POLYNOMIAL, 0, 0);
+	LOG_INF("CRC Settings: [%s]", crc == calc_crc ? "ok" : "not ok");
+	if (calc_crc == crc) {
 		initialized = true;
-		LOG_INF("Settings loaded from flash.");
 		return rc;
 	}
 
-	device_cfg.speed_max = CONFIG_DEFAULT_SPEED_MAX;
-	device_cfg.speed_min = CONFIG_PARAM_SPEED_MIN;
-	device_cfg.distance_min = CONFIG_PARAM_DISTANCE_MIN;
-	device_cfg.distance_brake = CONFIG_DEFAULT_DISTANCE_BRAKE;
-	device_cfg.pid_kp = CONFIG_DEFAULT_PID_KP;
-	device_cfg.pid_ki = CONFIG_DEFAULT_PID_KI;
-	device_cfg.bt_pswd = 253678;
+default_settings:
+	config_make_default_settings();
 
-	crc = CONFIG_MAGIC_WORD;
-
-	rc = settings_save();
-
-	if (rc) {
-		LOG_INF("Cannot save default config in flash");
-	} else {
-		LOG_INF("Default settings saved");
-	}
+	initialized = true;
 
 	return rc;
 }
@@ -266,3 +262,77 @@ const void *config_param_get(enum config_param_type type)
 	LOG_INF("%s: Uknown parameter type", __FUNCTION__);
 	return NULL;
 }
+
+void config_print_params(void)
+{
+	const struct device_cfg *p = &device_cfg;
+	LOG_INF("Device configuration:\n\r"
+		" speed_max = %d\n\r speed_min = %d\n\r distance_min = %d\n\r"
+		" distance_brake = %d\n\r pid_kp = %d\n\r pid_ki = %d\n\r",
+		p->speed_max, p->speed_min, p->distance_min,
+		p->distance_brake, p->pid_kp, p->pid_ki);
+
+}
+
+int config_make_default_settings(void)
+{
+	const uint8_t *ptr;
+	int rc;
+
+	device_cfg.speed_max = CONFIG_DEFAULT_SPEED_MAX;
+	device_cfg.speed_min = CONFIG_DEFAULT_SPEED_MIN;
+	device_cfg.distance_min = CONFIG_DEFAULT_DISTANCE_MIN;
+	device_cfg.distance_brake = CONFIG_DEFAULT_DISTANCE_BRAKE;
+	device_cfg.pid_kp = CONFIG_DEFAULT_PID_KP;
+	device_cfg.pid_ki = CONFIG_DEFAULT_PID_KI;
+	device_cfg.bt_pswd = 253678;
+
+	ptr = (const uint8_t *)&device_cfg;
+	crc = crc16(ptr, sizeof(device_cfg), POLYNOMIAL, 0, 0);
+
+	LOG_INF("Device will operate with default settings");
+
+	rc = settings_save();
+
+	if (rc) {
+		LOG_INF("Cannot save default config in flash");
+	} else {
+		LOG_INF("Default settings saved");
+	}
+
+	return rc;
+}
+
+
+static int cmd_conf_reset(const struct shell *shell, size_t argc, char **argv)
+{
+	int rc;
+
+	(void)argc;
+	(void)argv;
+
+	rc = config_make_default_settings();
+	if (rc) {
+		shell_error(shell, "config module error: %d", rc);
+	} else {
+		shell_print(shell, "default config applied");
+	}
+
+	return 0;
+}
+
+static int cmd_conf_show(const struct shell *shell, size_t argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+
+	config_print_params();
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_conf,
+	SHELL_CMD(reset, NULL, "Default config", cmd_conf_reset),
+	SHELL_CMD(show, NULL, "Show config", cmd_conf_show),
+	SHELL_SUBCMD_SET_END /* Array terminated. */
+);
+SHELL_CMD_ARG_REGISTER(config, &sub_conf, NULL, NULL, 2, 0);
