@@ -12,6 +12,7 @@
 #include "state_machine.h"
 
 #include "led.h"
+#include "config.h"
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
@@ -130,9 +131,19 @@ static void bt_ready(int err)
 
 void start_smp_bluetooth(void)
 {
+	const uint32_t *key;
+
 	k_work_init(&advertise_work, advertise);
 
-	bt_passkey_set(253678);
+	key = config_param_get(CONFIG_PARAM_BT_AUTH_PSWD);
+
+	if (key == NULL) {
+		LOG_ERR("%s: cannot get config key", __FUNCTION__);
+		return;
+	}
+
+	bt_passkey_set(*key);
+
 	/* Enable Bluetooth. */
 	int rc = bt_enable(bt_ready);
 

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <shell/shell.h>
 #include "pid.h"
+#include "config.h"
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
@@ -43,6 +44,8 @@ LOG_MODULE_REGISTER(pid);
 
 //---------------------------- LOCAL OBJECTS ----------------------------------
 static int32_t m_sum_error;
+static int32_t k_i;
+static int32_t k_p;
 
 //-----------------------------------------------------------------------------
 //----------------------- LOCAL FUNCTION PROTOTYPES ---------------------------
@@ -79,11 +82,16 @@ static int32_t m_sum_error;
 //=============================================================================
 void PID_Init(void)
 {
+	const uint32_t *ptr;
+
 	m_sum_error = 0;
+
+	ptr = config_param_get(CONFIG_PARAM_PID_KP);
+	k_p = *ptr;
+	ptr = config_param_get(CONFIG_PARAM_PID_KI);
+	k_i = *ptr;
 }
 
-static int32_t k_i = K_I;
-static int32_t k_p = K_P;
 //=============================================================================
 // FUNCTION: PID_Controller
 //=============================================================================
