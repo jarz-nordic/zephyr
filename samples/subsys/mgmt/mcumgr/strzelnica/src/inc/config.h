@@ -6,7 +6,6 @@
 #ifndef __CONFIG_H_
 #define __CONFIG_H_
 
-#define CONFIG_MAGIC_WORD 0x55ABCDEF
 #define CONFIG_DEFAULT_SPEED_MAX 	380 // pulses per 100us
 #define CONFIG_DEFAULT_SPEED_MIN	250 // pulses per 100us
 /* 1 rotation = 64 pulses = ~9cm */
@@ -31,5 +30,7 @@ enum config_param_type {
 int config_module_init(void);
 int config_param_write(enum config_param_type type, const void *data);
 const void *config_param_get(enum config_param_type type);
+void config_print_params(void);
+int config_make_default_settings(void);
 
 #endif // __CONFIG_H_

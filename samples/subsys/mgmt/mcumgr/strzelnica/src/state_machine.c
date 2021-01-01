@@ -49,7 +49,8 @@ struct drive_info {
 	uint32_t slow_speed;
 };
 
-enum sm_states state;
+static enum sm_states state;
+static struct drive_info lap;
 static bool button_pressed;
 static K_THREAD_STACK_DEFINE(thread_stack, THREAD_STACK_SIZE);
 static struct k_thread thread;
@@ -165,7 +166,6 @@ static inline void switch_driection(enum motor_drv_direction *dir)
 static void state_machine_thread_fn(void)
 {
 	enum motor_drv_direction direction = MOTOR_DRV_FORWARD;
-	struct drive_info lap;
 	const uint32_t *ptr;
 	uint32_t power;
 	int ret;
@@ -174,6 +174,7 @@ static void state_machine_thread_fn(void)
 	while(1) {
 		switch (state) {
 		case SM_INIT:
+			config_print_params();
 			state_set(SM_CHECK_LICENSE);
 			break;
 		case SM_CHECK_LICENSE:
@@ -315,6 +316,18 @@ static ssize_t bt_show_state(struct bt_conn *conn,
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, value,
 				 strlen(value));
 }
+
+static ssize_t bt_show_lap_length(struct bt_conn *conn,
+				const struct bt_gatt_attr *attr,
+				void *buf, uint16_t len, uint16_t offset)
+{
+	int32_t val = lap.length;
+
+	led_blink_fast(LED_BLUE, 2);
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, &val,
+				 sizeof(val));
+}
 #if 0
 static ssize_t bt_read_max_speed(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr,
@@ -360,13 +373,11 @@ BT_GATT_SERVICE_DEFINE(sm_service,
 			       NULL, bt_start_lap, NULL),
 	BT_GATT_CUD("BT Button", BT_GATT_PERM_READ),
 	BT_GATT_CPF(&name_cpf),
-#if 0
 	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
-			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
-			       BT_GATT_PERM_READ_AUTHEN | BT_GATT_PERM_WRITE_AUTHEN,
-			       bt_read_max_speed, bt_write_max_speed, NULL),
-	BT_GATT_CUD("Max speed", BT_GATT_PERM_READ),
+			       BT_GATT_CHRC_READ,
+			       BT_GATT_PERM_READ_AUTHEN,
+			       bt_show_lap_length, NULL, NULL),
+	BT_GATT_CUD("Lap length", BT_GATT_PERM_READ),
 	BT_GATT_CPF(&name_cpf),
-#endif
 );
 
