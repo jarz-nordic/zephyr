@@ -15,7 +15,7 @@
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
-LOG_MODULE_REGISTER(smp_bt_sample);
+LOG_MODULE_REGISTER(bluetooth);
 
 static struct k_work advertise_work;
 
@@ -57,10 +57,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	led_blink_slow(LED_BLUE, 3);
 
 	if (bt_conn_set_security(conn, BT_SECURITY_L4)) {
-		led_blink_fast(LED_RED, 3);
 		LOG_INF("Failed to set security\n");
-	} else {
-		led_blink_fast(LED_GREEN, 3);
 	}
 }
 
@@ -135,6 +132,7 @@ void start_smp_bluetooth(void)
 {
 	k_work_init(&advertise_work, advertise);
 
+	bt_passkey_set(253678);
 	/* Enable Bluetooth. */
 	int rc = bt_enable(bt_ready);
 
@@ -142,7 +140,6 @@ void start_smp_bluetooth(void)
 		LOG_ERR("Bluetooth init failed (err %d)", rc);
 		return;
 	}
-
 	bt_conn_cb_register(&conn_callbacks);
 	bt_conn_auth_cb_register(&auth_cb_display);
 
