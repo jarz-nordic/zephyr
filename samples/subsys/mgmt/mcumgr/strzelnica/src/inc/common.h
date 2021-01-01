@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Prevas A/S
+ * Copyright (c) 2020 Jakub Rzeszutko
  *
  * SPDX-License-Identifier: Apache-2.0
  */

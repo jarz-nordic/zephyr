@@ -1,6 +1,6 @@
 # nRF52 DK board configuration
 
-# Copyright (c) 2016 Nordic Semiconductor ASA
+# Copyright (c) 2020 Jakub Rzeszutko
 # SPDX-License-Identifier: Apache-2.0
 
 config BOARD_ENABLE_DCDC

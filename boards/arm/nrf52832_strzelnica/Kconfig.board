@@ -1,6 +1,6 @@
 # nRF52 STRZELNICA BOARD board configuration
 
-# Copyright (c) 2020 Nordic Semiconductor ASA
+# Copyright (c) 2020 Jakub Rzeszutko
 # SPDX-License-Identifier: Apache-2.0
 
 config BOARD_NRF52832_STRZELNICA
