@@ -15,6 +15,7 @@
 #include "encoder.h"
 #include "motor.h"
 #include "pid.h"
+#include "config.h"
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
@@ -27,16 +28,8 @@ LOG_MODULE_REGISTER(state_machine);
 #define SM_SPEED_SAMPLE_MS		(K_MSEC(100u))
 #define SM_SPEED_FIRST_SAMPLE_MS	(K_MSEC(500u))
 
-#define LOW_SPEED_IP100US		250 // pulses per 100us
-#define HIGH_SPEED_IP100US		350 // pulses per 100us
 #define PULSES_MOTOR_STOP_THRESHOLD	4
 #define START_MOTOR_POWER		(MOTOR_PWM_PERIOD_US * 0.4)
-
-/* If current distance differs more than TRACK_ADAPTATION_PULSES with measured
- * lap len update lap len.
- */
-#define TRACK_ADAPTATION_PULSES		128u  // 1 rotations = 64 pulses = ~9cm
-#define TRACK_BRAKE_DISTANCE_PULSES	2135u // ~3m
 
 enum sm_states {
 	SM_INIT,
@@ -154,10 +147,13 @@ static inline void state_set(enum sm_states new_state)
 	}
 }
 
-static inline bool is_lap_valid(const struct drive_info *info)
+static bool is_lap_valid(const struct drive_info *info)
 {
-	return abs(info->length) >= TRACK_BRAKE_DISTANCE_PULSES +
-				    ONE_ROTATION_PULSES;
+	const uint32_t *ptr;
+
+	ptr = config_param_get(CONFIG_PARAM_DISTANCE_MIN);
+
+	return abs(info->length) >= *ptr;
 }
 
 static inline void switch_driection(enum motor_drv_direction *dir)
@@ -170,6 +166,7 @@ static void state_machine_thread_fn(void)
 {
 	enum motor_drv_direction direction = MOTOR_DRV_FORWARD;
 	struct drive_info lap;
+	const uint32_t *ptr;
 	uint32_t power;
 	int ret;
 
@@ -194,8 +191,9 @@ static void state_machine_thread_fn(void)
 			lap.length = 0xFFFFFFFF; // unknown len
 			lap.position = 0;
 			lap.brake_distance = 0; // first run - const speed
-			lap.speed = LOW_SPEED_IP100US;
-			lap.slow_speed = LOW_SPEED_IP100US;
+			ptr = config_param_get(CONFIG_PARAM_SPEED_MIN);
+			lap.speed = *ptr;
+			lap.slow_speed = *ptr;
 			power = START_MOTOR_POWER;
 
 			run_motor(&lap, direction, power);
@@ -218,9 +216,12 @@ static void state_machine_thread_fn(void)
 			break;
 		case SM_RUNNING:
 			lap.position = 0;
-			lap.brake_distance = TRACK_BRAKE_DISTANCE_PULSES;
-			lap.speed = HIGH_SPEED_IP100US;
-			lap.slow_speed = LOW_SPEED_IP100US;
+			ptr = config_param_get(CONFIG_PARAM_DISTANCE_BRAKE);
+			lap.brake_distance = *ptr;
+			ptr = config_param_get(CONFIG_PARAM_SPEED_MAX);
+			lap.speed = *ptr;
+			ptr = config_param_get(CONFIG_PARAM_SPEED_MIN);
+			lap.slow_speed = *ptr;
 
 			run_motor(&lap, direction, power);
 
@@ -314,6 +315,20 @@ static ssize_t bt_show_state(struct bt_conn *conn,
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, value,
 				 strlen(value));
 }
+#if 0
+static ssize_t bt_read_max_speed(struct bt_conn *conn,
+				const struct bt_gatt_attr *attr,
+				void *buf, uint16_t len, uint16_t offset)
+{
+	const uint32_t *value;
+
+	led_blink_fast(LED_BLUE, 2);
+	value = config_param_get(CONFIG_PARAM_DISTANCE_MAX);
+
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, value,
+				 strlen(value));
+#endif
 
 static struct bt_uuid_128 name_uuid = BT_UUID_INIT_128(
 	0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
@@ -345,5 +360,13 @@ BT_GATT_SERVICE_DEFINE(sm_service,
 			       NULL, bt_start_lap, NULL),
 	BT_GATT_CUD("BT Button", BT_GATT_PERM_READ),
 	BT_GATT_CPF(&name_cpf),
+#if 0
+	BT_GATT_CHARACTERISTIC(&name_enc_uuid.uuid,
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
+			       BT_GATT_PERM_READ_AUTHEN | BT_GATT_PERM_WRITE_AUTHEN,
+			       bt_read_max_speed, bt_write_max_speed, NULL),
+	BT_GATT_CUD("Max speed", BT_GATT_PERM_READ),
+	BT_GATT_CPF(&name_cpf),
+#endif
 );
 

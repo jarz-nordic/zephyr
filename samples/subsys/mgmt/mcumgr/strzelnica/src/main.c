@@ -87,7 +87,6 @@ void main(void)
 		LOG_ERR("config_module error (err: %d)", ret);
 	}
 
-	return;
 	ret = STATS_INIT_AND_REG(smp_svr_stats, STATS_SIZE_32,
 	 			 "smp_svr_stats");
 
