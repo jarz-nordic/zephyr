@@ -29,11 +29,12 @@ LOG_MODULE_REGISTER(state_machine);
 #define SM_SPEED_FIRST_SAMPLE_MS	(K_MSEC(500u))
 
 #define PULSES_MOTOR_STOP_THRESHOLD	4
-#define START_MOTOR_POWER		(MOTOR_PWM_PERIOD_US * 0.4)
+#define START_MOTOR_POWER		(MOTOR_PWM_PERIOD_US)
 
 enum sm_states {
 	SM_INIT,
 	SM_CHECK_LICENSE,
+	SM_MICHAL,
 	SM_IDLE,
 	SM_CALIBRATION_RUN,
 	SM_RUNNING,
@@ -101,6 +102,8 @@ static void run_motor(struct drive_info *info,
 	while (1) {
 		k_sleep(K_MSEC(100));
 
+		continue;
+
 		encoder_get(&sensor);
 		pid.measured_value = abs(sensor.acc);
 		info->position += sensor.acc;
@@ -129,8 +132,10 @@ void buttons_cb(enum button_name name, enum button_event evt)
 		} else {
 			led_blink_slow(LED_GREEN, 3);
 		}
+		motor_move(MOTOR_DRV_FORWARD, MOTOR_PWM_PERIOD_US);
 		button_enable(BUTTON_NAME_CALL, true);
 	} else if (name == BUTTON_NAME_SPEED) {
+		motor_move(MOTOR_DRV_NEUTRAL, 0);
 		if (evt == BUTTON_EVT_PRESSED_SHORT) {
 			led_blink_fast(LED_RED, 3);
 		} else {
@@ -181,34 +186,6 @@ static void state_machine_thread_fn(void)
 			state_set(SM_CHECK_LICENSE);
 			break;
 		case SM_CHECK_LICENSE:
-			LOG_INF("checking license");
-			ret = encoder_init(false);
-			if (ret) {
-				LOG_ERR("encoder init error: [%d]", ret);
-				return;
-			} else {
-				LOG_INF("Encoder initialized");
-			}
-			state_set(SM_CALIBRATION_RUN);
-			break;
-		case SM_CALIBRATION_RUN:
-			lap.length = 0xFFFFFFFF; // unknown len
-			lap.position = 0;
-			lap.brake_distance = 0; // first run - const speed
-			ptr = config_param_get(CONFIG_PARAM_SPEED_MIN);
-			lap.speed = *ptr;
-			lap.slow_speed = *ptr;
-			power = START_MOTOR_POWER;
-
-			run_motor(&lap, direction, power);
-
-			update_lap_len(&lap);
-			if (is_lap_valid(&lap)) {
-				LOG_DBG("lap valid");
-				state_set(SM_IDLE);
-				buttons_enable(true);
-			}
-			switch_driection(&direction);
 			break;
 		case SM_IDLE:
 			if (button_pressed) {
@@ -220,16 +197,12 @@ static void state_machine_thread_fn(void)
 			break;
 		case SM_RUNNING:
 			lap.position = 0;
-			ptr = config_param_get(CONFIG_PARAM_DISTANCE_BRAKE);
-			lap.brake_distance = *ptr;
-			ptr = config_param_get(CONFIG_PARAM_SPEED_MAX);
-			lap.speed = *ptr;
-			ptr = config_param_get(CONFIG_PARAM_SPEED_MIN);
-			lap.slow_speed = *ptr;
-			power = START_MOTOR_POWER;
+			lap.brake_distance = 0;
+			lap.slow_speed = lap.speed;
+			power = MOTOR_PWM_PERIOD_US; // max power
 
 			run_motor(&lap, direction, power);
-
+			state_set(SM_IDLE);
 			update_lap_len(&lap);
 			if (is_lap_valid(&lap)) {
 				LOG_DBG("lap valid");
