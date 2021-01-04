@@ -23,6 +23,7 @@ struct device_cfg {
 	uint32_t speed_min;
 	uint32_t distance_min;
 	uint32_t distance_brake;
+	uint32_t start_power;
 	uint32_t pid_kp;
 	uint32_t pid_ki;
 	uint32_t bt_pswd;
@@ -64,6 +65,11 @@ static int cfg_handle_set(const char *name, size_t len,
 				     sizeof(p->distance_brake));
 			return 0;
 		}
+		if (!strncmp(name, "start_power", name_len)) {
+			rc = read_cb(cb_arg, &p->start_power,
+				     sizeof(p->start_power));
+			return 0;
+		}
 		if (!strncmp(name, "pid_kp", name_len)) {
 			rc = read_cb(cb_arg, &p->pid_kp, sizeof(p->pid_kp));
 			return 0;
@@ -99,6 +105,8 @@ static int cfg_handle_export(int (*cb)(const char *name,
 		 sizeof(p->distance_min));
 	(void)cb("engine/cfg/distance_brake", &p->distance_brake,
 		 sizeof(p->distance_brake));
+	(void)cb("engine/cfg/start_power", &p->start_power,
+		 sizeof(p->start_power));
 	(void)cb("engine/cfg/pid_kp", &p->pid_kp, sizeof(p->pid_kp));
 	(void)cb("engine/cfg/pid_ki", &p->pid_ki, sizeof(p->pid_ki));
 	(void)cb("engine/cfg/bt_pswd", &p->bt_pswd, sizeof(p->bt_pswd));
@@ -217,6 +225,13 @@ int config_param_write(enum config_param_type type, const void *const data)
 					sizeof(uint32_t));
 		LOG_INF("writing distance_brake: %d", rc);
 		break;
+	case CONFIG_PARAM_START_POWER:
+		p->distance_brake = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/start_power",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing start_power: %d", rc);
+		break;
 	case CONFIG_PARAM_PID_KP:
 		p->pid_kp = *((uint32_t *)data);
 		rc = settings_save_one("engine/cfg/pid_kp",
@@ -270,6 +285,8 @@ const void *config_param_get(enum config_param_type type)
 		return &p->distance_min;
 	case CONFIG_PARAM_DISTANCE_BRAKE:
 		return &p->distance_brake;
+	case CONFIG_PARAM_START_POWER:
+		return &p->start_power;
 	case CONFIG_PARAM_PID_KP:
 		return &p->pid_kp;
 	case CONFIG_PARAM_PID_KI:
@@ -291,9 +308,10 @@ void config_print_params(void)
 	const struct device_cfg *p = &device_cfg;
 	LOG_INF("Device configuration:\n\r"
 		" speed_max = %d\n\r speed_min = %d\n\r distance_min = %d\n\r"
-		" distance_brake = %d\n\r pid_kp = %d\n\r pid_ki = %d\n\r",
+		" distance_brake = %d\n\r start_power = %d \r\n pid_kp = %d\n\r"
+		" pid_ki = %d\n\r",
 		p->speed_max, p->speed_min, p->distance_min,
-		p->distance_brake, p->pid_kp, p->pid_ki);
+		p->distance_brake, p->start_power, p->pid_kp, p->pid_ki);
 
 }
 
@@ -306,6 +324,7 @@ int config_make_default_settings(void)
 	device_cfg.speed_min = CONFIG_DEFAULT_SPEED_MIN;
 	device_cfg.distance_min = CONFIG_DEFAULT_DISTANCE_MIN;
 	device_cfg.distance_brake = CONFIG_DEFAULT_DISTANCE_BRAKE;
+	device_cfg.start_power = CONFIG_DEFAULT_START_POWER;
 	device_cfg.pid_kp = CONFIG_DEFAULT_PID_KP;
 	device_cfg.pid_ki = CONFIG_DEFAULT_PID_KI;
 	device_cfg.bt_pswd = 253678;
