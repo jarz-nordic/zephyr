@@ -5,7 +5,6 @@
  */
 #include <stdlib.h>
 #include <zephyr.h>
-#include <stats/stats.h>
 #include <devicetree.h>
 #include <drivers/gpio.h>
 #include <drivers/pwm.h>
@@ -13,10 +12,8 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
 
-#include <shell/shell.h>
 #include "config.h"
 #include "motor.h"
-#include "encoder.h"
 
 LOG_MODULE_REGISTER(motor);
 
@@ -36,9 +33,9 @@ LOG_MODULE_REGISTER(motor);
 #define PWM_CH0_NODE DT_ALIAS(pwm_ch0)
 
 #if DT_NODE_HAS_STATUS(PWM_CH0_NODE, okay)
-#define PWM0_LABEL       DT_PWMS_LABEL(PWM_CH0_NODE)
-#define PWM0_CHANNEL     DT_PWMS_CHANNEL(PWM_CH0_NODE)
-#define PWM0_FLAGS       DT_PWMS_FLAGS(PWM_CH0_NODE)
+#define PWM0_LABEL		DT_PWMS_LABEL(PWM_CH0_NODE)
+#define PWM0_CHANNEL		DT_PWMS_CHANNEL(PWM_CH0_NODE)
+#define PWM0_FLAGS		DT_PWMS_FLAGS(PWM_CH0_NODE)
 #else
 /* A build error here means your board isn't set up to use motor with PWM. */
 #error "Unsupported board: PWM_CH0 devicetree alias is not defined"
@@ -48,9 +45,9 @@ LOG_MODULE_REGISTER(motor);
 #define PWM_CH1_NODE DT_ALIAS(pwm_ch1)
 
 #if DT_NODE_HAS_STATUS(PWM_CH1_NODE, okay)
-#define PWM1_LABEL       DT_PWMS_LABEL(PWM_CH1_NODE)
-#define PWM1_CHANNEL     DT_PWMS_CHANNEL(PWM_CH1_NODE)
-#define PWM1_FLAGS       DT_PWMS_FLAGS(PWM_CH1_NODE)
+#define PWM1_LABEL		DT_PWMS_LABEL(PWM_CH1_NODE)
+#define PWM1_CHANNEL		DT_PWMS_CHANNEL(PWM_CH1_NODE)
+#define PWM1_FLAGS		DT_PWMS_FLAGS(PWM_CH1_NODE)
 #else
 /* A build error here means your board isn't set up to use motor with PWM. */
 #error "Unsupported board: PWM_CH1 devicetree alias is not defined"
@@ -135,8 +132,8 @@ static int pwm_ch0_set(uint32_t duty_cycle)
 		return -ENXIO;
 	}
 
-	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, MOTOR_PWM_PERIOD_US, duty_cycle,
-				PWM0_FLAGS);
+	ret = pwm_pin_set_usec(dev, PWM0_CHANNEL, MOTOR_PWM_PERIOD_US,
+			       duty_cycle, PWM0_FLAGS);
 	if (ret) {
 		LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
 	}
@@ -155,8 +152,8 @@ static int pwm_ch1_set(uint32_t duty_cycle)
 		return -ENXIO;
 	}
 
-	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, MOTOR_PWM_PERIOD_US, duty_cycle,
-				PWM1_FLAGS);
+	ret = pwm_pin_set_usec(dev, PWM1_CHANNEL, MOTOR_PWM_PERIOD_US,
+			       duty_cycle, PWM1_FLAGS);
 	if (ret) {
 		LOG_WRN("%s: error: [%d]", __FUNCTION__, ret);
 	}
@@ -210,6 +207,9 @@ static int pwms_set(enum motor_drv_direction direction, uint32_t duty)
 	return ret;
 }
 
+/* To save motor and motor circuit it is not allowed to switch motor
+ * moving direction while motor is running.
+ */
 static int check_direction(enum motor_drv_direction direction)
 {
 	if (direction >= MOTOR_DRV_MAX) {
@@ -264,7 +264,9 @@ int motor_init(void)
  */
 int motor_move(enum motor_drv_direction direction, uint32_t speed)
 {
-	static const char *lookup[] = {"NEUTRAL", "FORWARD", "BACKWARD", "BRAKE"};
+	static const char *lookup[] = {
+		"NEUTRAL", "FORWARD", "BACKWARD", "BRAKE"
+	};
 	int ret;
 
 	ret = check_direction(direction);

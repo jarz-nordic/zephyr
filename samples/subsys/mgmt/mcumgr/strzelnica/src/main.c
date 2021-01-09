@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <zephyr.h>
 #include <stats/stats.h>
-#include <usb/usb_device.h>
 
 #include <devicetree.h>
 #include <drivers/gpio.h>
@@ -74,19 +73,16 @@ void main(void)
 	 */
 	LOG_INF("build time: " __DATE__ " " __TIME__);
 
+	ret = led_thread_init();
+	LOG_INF("led_module init: [%s]", ret != 0 ? "error" : "ok");
+	if (ret) {
+		LOG_WRN("  ERROR: %d", ret);
+		led_blink_slow(LED_RED, LED_BLINK_INFINITE);
+	}
+
 	/* The system work queue handles all incoming mcumgr requests.  Let the
 	 * main thread idle while the mcumgr server runs.
 	 */
-	ret = led_thread_init();
-	if (ret) {
-		LOG_ERR("led module not initialized. err:%d", ret);
-	}
-
-	ret = config_module_init();
-	if (ret) {
-		LOG_ERR("config_module error (err: %d)", ret);
-	}
-
 	ret = STATS_INIT_AND_REG(smp_svr_stats, STATS_SIZE_32,
 	 			 "smp_svr_stats");
 
@@ -105,6 +101,17 @@ void main(void)
 
 	fs_mgmt_register_group();
 #endif
+
+	ret = config_module_init();
+	LOG_INF("config_module init: [%s]", ret != 0 ? "error" : "ok");
+	if (ret != 0) {
+		LOG_ERR("  ERROR: %d", ret);
+		led_blink_slow(LED_RED, LED_BLINK_INFINITE);
+		return;
+	}
+
+	k_sleep(K_MSEC(500));
+
 #ifdef CONFIG_MCUMGR_CMD_OS_MGMT
 	os_mgmt_register_group();
 #endif
@@ -121,24 +128,18 @@ void main(void)
 	start_smp_udp();
 #endif
 
-	if (IS_ENABLED(CONFIG_USB)) {
-		ret = usb_enable(NULL);
-		if (ret) {
-			led_blink_slow(LED_RED, 4);
-			LOG_ERR("Failed to enable USB");
-			return;
-		}
-	}
-
 	ret = motor_init();
+	LOG_INF("Motor init: [%s]", ret != 0 ? "error" : "ok");
 	if (ret) {
-		LOG_ERR("motor init error (err: %d)", ret);
+		LOG_ERR("  ERROR: %d", ret);
 		led_blink_slow(LED_RED, LED_BLINK_INFINITE);
 		return;
 	}
 
 	ret = state_machine_init();
-	if (ret) {
-		LOG_ERR("State machine init error (err: %d)", ret);
+	LOG_INF("State Machine init: [%s]", ret != 0 ? "error" : "ok");
+	if (ret != 0) {
+		LOG_ERR("  ERROR: %d", ret);
+		led_blink_slow(LED_RED, LED_BLINK_INFINITE);
 	}
 }

@@ -6,8 +6,6 @@
 #ifndef __STATE_MACHINE_H_
 #define __STATE_MACHINE_H_
 
-#include <zephyr/types.h>
-
 int state_machine_init(void);
 
 #endif

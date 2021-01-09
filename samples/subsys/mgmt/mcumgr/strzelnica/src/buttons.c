@@ -242,8 +242,7 @@ int button_enable(enum button_name name, bool enable)
 
 	flags = enable ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE;
 	ret = gpio_pin_interrupt_configure(button_dev[name].dev,
-					   button_dev[name].pin,
-					   flags);
+					   button_dev[name].pin, flags);
 	if (ret) {
 		LOG_WRN("%s: button [%d] %s failed: %d", __FUNCTION__,
 			name, enable ? "enable" : "disable", ret);

@@ -102,8 +102,7 @@ uint16_t PID_Controller(pid_data_t *pid)
 	int32_t regulator;
 	int32_t integrator;
 
-	if (NULL == pid)
-	{
+	if (NULL == pid) {
 		return 0;
 	}
 
@@ -112,17 +111,14 @@ uint16_t PID_Controller(pid_data_t *pid)
 	m_sum_error += error;
 
 	LOG_INF("set = %d | measured = %d | sum_error = %d",
-		 pid->set_value, pid->measured_value, m_sum_error);
+		pid->set_value, pid->measured_value, m_sum_error);
 
-	integrator = m_sum_error/k_i;
+	integrator = m_sum_error / k_i;
 	regulator = (term_p + integrator);
 
-	if(regulator > pid->max_val)
-	{
+	if (regulator > pid->max_val) {
 		regulator = pid->max_val;
-	}
-	else if(regulator < pid->min_val)
-	{
+	} else if (regulator < pid->min_val) {
 		regulator = pid->min_val;
 	}
 

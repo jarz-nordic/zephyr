@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 #include <zephyr.h>
-#include <stats/stats.h>
 #include <devicetree.h>
 #include <drivers/gpio.h>
 #include <drivers/sensor.h>
@@ -38,7 +37,8 @@ static int qdec_init(void)
 	return 0;
 }
 
-static void data_ready_handler(const struct device *dev, struct sensor_trigger *trig)
+static void data_ready_handler(const struct device *dev,
+			       struct sensor_trigger *trig)
 {
 	struct sensor_value value;
 
@@ -85,7 +85,8 @@ int encoder_get(struct encoder_result *data)
 
 	ret = sensor_sample_fetch(qdec_dev);
 	if (ret) {
-		LOG_WRN("%s: cannot fetch sample. Err: [%d]", __FUNCTION__, ret);
+		LOG_WRN("%s: cannot fetch sample. Err: [%d]", __FUNCTION__,
+			ret);
 		return ret;
 	}
 
@@ -101,8 +102,6 @@ int encoder_get(struct encoder_result *data)
 
 	qdec_data.acc = 0;
 	qdec_data.accdbl = 0;
-
-//	LOG_INF("qdec: acc = %d | accdbl = %d", data->acc, data->accdbl);
 
 	return ret;
 }

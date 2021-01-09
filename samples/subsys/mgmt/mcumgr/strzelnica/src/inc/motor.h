@@ -9,8 +9,8 @@
 #include "config.h"
 
 #define MOTOR_PWM_PERIOD_US		(CONFIG_MOTOR_PWM_PERIOD_US)
-#define MOTOR_PWM_MAX_PERIOD_US		(1 * MOTOR_PWM_PERIOD_US)
-#define MOTOR_PWM_MIN_PERIOD_US		(0.125*MOTOR_PWM_PERIOD_US) // 12,55555%
+#define MOTOR_PWM_MAX_PERIOD_US		(0.95 * MOTOR_PWM_PERIOD_US)
+#define MOTOR_PWM_MIN_PERIOD_US		(0.05*MOTOR_PWM_PERIOD_US) // 12,55555%
 
 /* Enum with available motor actions */
 enum motor_drv_direction {

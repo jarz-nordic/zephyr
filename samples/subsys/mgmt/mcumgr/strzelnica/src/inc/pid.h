@@ -22,8 +22,6 @@
 //----------------- INCLUDE DIRECTIVES FOR OTHER HEADERS ----------------------
 
 //-------------------- EXPORTED DEFINES FOR CONSTANTS -------------------------
-#define K_P	20
-#define K_I	1
 
 //-------------------- EXPORTED DEFINE MACROS (#, ##)--------------------------
 
