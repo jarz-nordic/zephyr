@@ -102,8 +102,6 @@ int encoder_get(struct encoder_result *data)
 	qdec_data.acc = 0;
 	qdec_data.accdbl = 0;
 
-//	LOG_INF("qdec: acc = %d | accdbl = %d", data->acc, data->accdbl);
-
 	return ret;
 }
 

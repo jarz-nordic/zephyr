@@ -8,7 +8,6 @@
 #include <zephyr.h>
 #include <sys/crc.h>
 #include <settings/settings.h>
-#include <shell/shell.h>
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(config_module);
@@ -19,9 +18,12 @@ LOG_MODULE_REGISTER(config_module);
 #define POLYNOMIAL 0x8005
 
 struct device_cfg {
+	uint32_t memory_layout;
 	uint32_t speed_max;
 	uint32_t speed_min;
+	uint32_t speed_brake;
 	uint32_t distance_min;
+	uint32_t distance_slow;
 	uint32_t distance_brake;
 	uint32_t start_power;
 	uint32_t pid_kp;
@@ -32,7 +34,7 @@ struct device_cfg {
 
 static struct device_cfg device_cfg;
 static bool initialized;
-static uint32_t crc;
+static uint32_t crc = 1;
 
 static int cfg_handle_set(const char *name, size_t len,
 			  settings_read_cb read_cb, void *cb_arg)
@@ -45,6 +47,11 @@ static int cfg_handle_set(const char *name, size_t len,
 	name_len = settings_name_next(name, &next);
 
 	if (!next) {
+		if (!strncmp(name, "memory_layout", name_len)) {
+			rc = read_cb(cb_arg, &p->memory_layout,
+				     sizeof(p->memory_layout));
+			return 0;
+		}
 		if (!strncmp(name, "speed_max", name_len)) {
 			rc = read_cb(cb_arg, &p->speed_max,
 				     sizeof(p->speed_max));
@@ -55,9 +62,19 @@ static int cfg_handle_set(const char *name, size_t len,
 				     sizeof(p->speed_min));
 			return 0;
 		}
+		if (!strncmp(name, "speed_brake", name_len)) {
+			rc = read_cb(cb_arg, &p->speed_brake,
+				     sizeof(p->speed_brake));
+			return 0;
+		}
 		if (!strncmp(name, "distance_min", name_len)) {
 			rc = read_cb(cb_arg, &p->distance_min,
 				     sizeof(p->distance_min));
+			return 0;
+		}
+		if (!strncmp(name, "distance_slow", name_len)) {
+			rc = read_cb(cb_arg, &p->distance_slow,
+				     sizeof(p->distance_slow));
 			return 0;
 		}
 		if (!strncmp(name, "distance_brake", name_len)) {
@@ -99,10 +116,16 @@ static int cfg_handle_export(int (*cb)(const char *name,
 
 	LOG_INF("export keys under <CFG> handler");
 
+	(void)cb("engine/cfg/memory_layout", &p->memory_layout,
+		 sizeof(p->memory_layout));
 	(void)cb("engine/cfg/speed_max", &p->speed_max, sizeof(p->speed_max));
 	(void)cb("engine/cfg/speed_min", &p->speed_min, sizeof(p->speed_min));
+	(void)cb("engine/cfg/speed_brake", &p->speed_brake,
+		 sizeof(p->speed_brake));
 	(void)cb("engine/cfg/distance_min", &p->distance_min,
 		 sizeof(p->distance_min));
+	(void)cb("engine/cfg/distance_slow", &p->distance_slow,
+		 sizeof(p->distance_slow));
 	(void)cb("engine/cfg/distance_brake", &p->distance_brake,
 		 sizeof(p->distance_brake));
 	(void)cb("engine/cfg/start_power", &p->start_power,
@@ -154,6 +177,7 @@ int config_module_init(void)
 	uint16_t calc_crc;
 	const uint8_t *ptr;
 
+	LOG_INF("Config initalization init.");
 	rc = settings_subsys_init();
 	if (rc != 0) {
 		LOG_ERR("Initialization: fail (err %d)", rc);
@@ -169,13 +193,18 @@ int config_module_init(void)
 
 	ptr = (const uint8_t *)&device_cfg;
 	calc_crc = crc16(ptr, sizeof(device_cfg), POLYNOMIAL, 0, 0);
-	LOG_INF("CRC Settings: [%s]", crc == calc_crc ? "ok" : "not ok");
+	LOG_INF("CRC Settings: [%s]: %d", crc == calc_crc ? "ok" : "not ok", crc);
 	if (calc_crc == crc) {
-		initialized = true;
-		return rc;
+		if (device_cfg.memory_layout == CONFIG_MEMORY_LAYOUT) {
+			initialized = true;
+			return rc;
+		} else {
+			 LOG_INF("Store memory layout not compatible");
+		}
 	}
 
 default_settings:
+	LOG_INF("Force default settings");
 	config_make_default_settings();
 
 	initialized = true;
@@ -197,6 +226,13 @@ int config_param_write(enum config_param_type type, const void *const data)
 		return -EINVAL;
 	}
 	switch (type) {
+	case CONFIG_PARAM_MEMORY_LAYOUT:
+		p->speed_max = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/memory_layout",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing memory_layout: %d", rc);
+		break;
 	case CONFIG_PARAM_SPEED_MAX:
 		p->speed_max = *((uint32_t *)data);
 		rc = settings_save_one("engine/cfg/speed_max",
@@ -211,12 +247,26 @@ int config_param_write(enum config_param_type type, const void *const data)
 					sizeof(uint32_t));
 		LOG_INF("writing speed_min: %d", rc);
 		break;
+	case CONFIG_PARAM_SPEED_BRAKE:
+		p->speed_brake = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/speed_brake",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing speed_brake: %d", rc);
+		break;
 	case CONFIG_PARAM_DISTANCE_MIN:
 		p->distance_min = *((uint32_t *)data);
 		rc = settings_save_one("engine/cfg/distance_min",
 					(const void *)data,
 					sizeof(uint32_t));
 		LOG_INF("writing distance_min: %d", rc);
+		break;
+	case CONFIG_PARAM_DISTANCE_SLOW:
+		p->distance_slow = *((uint32_t *)data);
+		rc = settings_save_one("engine/cfg/distance_slow",
+					(const void *)data,
+					sizeof(uint32_t));
+		LOG_INF("writing distance_slow: %d", rc);
 		break;
 	case CONFIG_PARAM_DISTANCE_BRAKE:
 		p->distance_brake = *((uint32_t *)data);
@@ -277,12 +327,18 @@ const void *config_param_get(enum config_param_type type)
 	}
 
 	switch (type) {
+	case CONFIG_PARAM_MEMORY_LAYOUT:
+		return &p->memory_layout;
 	case CONFIG_PARAM_SPEED_MAX:
 		return &p->speed_max;
 	case CONFIG_PARAM_SPEED_MIN:
 		return &p->speed_min;
+	case CONFIG_PARAM_SPEED_BRAKE:
+		return &p->speed_brake;
 	case CONFIG_PARAM_DISTANCE_MIN:
 		return &p->distance_min;
+	case CONFIG_PARAM_DISTANCE_SLOW:
+		return &p->distance_slow;
 	case CONFIG_PARAM_DISTANCE_BRAKE:
 		return &p->distance_brake;
 	case CONFIG_PARAM_START_POWER:
@@ -306,13 +362,16 @@ const void *config_param_get(enum config_param_type type)
 void config_print_params(void)
 {
 	const struct device_cfg *p = &device_cfg;
-	LOG_INF("Device configuration:\n\r"
-		" speed_max = %d\n\r speed_min = %d\n\r distance_min = %d\n\r"
-		" distance_brake = %d\n\r start_power = %d \r\n pid_kp = %d\n\r"
-		" pid_ki = %d\n\r",
-		p->speed_max, p->speed_min, p->distance_min,
-		p->distance_brake, p->start_power, p->pid_kp, p->pid_ki);
 
+	LOG_INF("Memory layout: 0x%x.\r\nDevice configuration:\n\r"
+		" speed_max = %d\n\r speed_min = %d\n\r speed_brake = %d\n\r"
+		" distance_min = %d\n\r distance_slow = %d\n\r"
+		" distance_brake = %d\n\r"
+		" start_power = %d \r\n pid_kp = %d\n\r pid_ki = %d\n\r",
+		p->memory_layout,
+		p->speed_max, p->speed_min, p->speed_brake,
+		p->distance_min, p->distance_slow, p->distance_brake,
+		p->start_power, p->pid_kp, p->pid_ki);
 }
 
 int config_make_default_settings(void)
@@ -320,9 +379,12 @@ int config_make_default_settings(void)
 	const uint8_t *ptr;
 	int rc;
 
+	device_cfg.memory_layout = CONFIG_MEMORY_LAYOUT;
 	device_cfg.speed_max = CONFIG_DEFAULT_SPEED_MAX;
 	device_cfg.speed_min = CONFIG_DEFAULT_SPEED_MIN;
+	device_cfg.speed_brake = CONFIG_DEFAULT_SPEED_BRAKE;
 	device_cfg.distance_min = CONFIG_DEFAULT_DISTANCE_MIN;
+	device_cfg.distance_slow = CONFIG_DEFAULT_DISTANCE_SLOW;
 	device_cfg.distance_brake = CONFIG_DEFAULT_DISTANCE_BRAKE;
 	device_cfg.start_power = CONFIG_DEFAULT_START_POWER;
 	device_cfg.pid_kp = CONFIG_DEFAULT_PID_KP;
@@ -336,45 +398,7 @@ int config_make_default_settings(void)
 
 	rc = settings_save();
 
-	if (rc) {
-		LOG_INF("Cannot save default config in flash");
-	} else {
-		LOG_INF("Default settings saved");
-	}
+	LOG_INF("Save default config in flash: %s", rc == 0 ? "OK" : "FAILED");
 
 	return rc;
 }
-
-
-static int cmd_conf_reset(const struct shell *shell, size_t argc, char **argv)
-{
-	int rc;
-
-	(void)argc;
-	(void)argv;
-
-	rc = config_make_default_settings();
-	if (rc) {
-		shell_error(shell, "config module error: %d", rc);
-	} else {
-		shell_print(shell, "default config applied");
-	}
-
-	return 0;
-}
-
-static int cmd_conf_show(const struct shell *shell, size_t argc, char **argv)
-{
-	(void)argc;
-	(void)argv;
-
-	config_print_params();
-	return 0;
-}
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_conf,
-	SHELL_CMD(reset, NULL, "Default config", cmd_conf_reset),
-	SHELL_CMD(show, NULL, "Show config", cmd_conf_show),
-	SHELL_SUBCMD_SET_END /* Array terminated. */
-);
-SHELL_CMD_ARG_REGISTER(config, &sub_conf, NULL, NULL, 2, 0);
