@@ -193,7 +193,7 @@ int config_module_init(void)
 
 	ptr = (const uint8_t *)&device_cfg;
 	calc_crc = crc16(ptr, sizeof(device_cfg), POLYNOMIAL, 0, 0);
-	LOG_INF("CRC Settings: [%s]: %d", crc == calc_crc ? "ok" : "not ok", crc);
+	LOG_INF("CRC Settings: [%s]", crc == calc_crc ? "ok" : "error");
 	if (calc_crc == crc) {
 		if (device_cfg.memory_layout == CONFIG_MEMORY_LAYOUT) {
 			initialized = true;

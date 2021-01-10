@@ -36,6 +36,7 @@
 #include "common.h"
 #include "led.h"
 #include "state_machine.h"
+#include "adc.h"
 
 LOG_MODULE_REGISTER(main);
 
@@ -127,6 +128,12 @@ void main(void)
 #ifdef CONFIG_MCUMGR_SMP_UDP
 	start_smp_udp();
 #endif
+
+	ret = adc_init();
+	LOG_INF("ADC init: [%s]", ret != 0 ? "error" : "ok");
+	if (ret) {
+		LOG_ERR("  ERROR: %d", ret);
+	}
 
 	ret = motor_init();
 	LOG_INF("Motor init: [%s]", ret != 0 ? "error" : "ok");

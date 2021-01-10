@@ -16,6 +16,7 @@
 #include "motor.h"
 #include "pid.h"
 #include "config.h"
+#include "adc.h"
 
 #define LOG_LEVEL LOG_LEVEL_DBG
 #include <logging/log.h>
@@ -98,6 +99,18 @@ static inline bool is_distance_brake(const struct drive_info *info)
 	return abs(info->length + info->position) < info->distance_brake;
 }
 
+static bool is_overcurrent(void)
+{
+	int current;
+	int rc;
+
+	rc = adc_get(&current);
+
+	LOG_INF(" => current = %d", current);
+
+	return false;
+}
+
 static void run_motor(struct drive_info *const info,
 		      const enum motor_drv_direction direction,
 		      uint32_t power, const uint32_t stop_samples)
@@ -131,38 +144,30 @@ static void run_motor(struct drive_info *const info,
 
 		motor_move(direction, power);
 
-		if (is_motor_stopped(sensor.acc, stop_samples)) {
+		if (is_motor_stopped(sensor.acc, stop_samples) ||
+		    is_overcurrent()) {
 			power = 0;
 			motor_move(MOTOR_DRV_NEUTRAL, power);
 			return;
 		}
+
 	}
 }
 
 void buttons_cb(enum button_name name, enum button_event evt)
 {
-	static uint32_t def_settings;
-
 	if (name == BUTTON_NAME_CALL) {
 		if (evt == BUTTON_EVT_PRESSED_SHORT) {
 			led_blink_fast(LED_GREEN, 3);
-			def_settings = 0;
 		} else {
 			led_blink_slow(LED_GREEN, 3);
-			def_settings = 1;
 		}
 		button_enable(BUTTON_NAME_CALL, true);
 	} else if (name == BUTTON_NAME_SPEED) {
 		if (evt == BUTTON_EVT_PRESSED_SHORT) {
-			def_settings = 0;
 			led_blink_fast(LED_RED, 3);
 		} else {
 			led_blink_slow(LED_RED, 3);
-			if (def_settings == 1) {
-				config_make_default_settings();
-			}
-			def_settings = 0;
-
 		}
 		button_enable(BUTTON_NAME_SPEED, true);
 	}
