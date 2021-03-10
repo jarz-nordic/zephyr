@@ -144,9 +144,12 @@ static int cmd_demo_getopt(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_demo_params(const struct shell *shell, size_t argc, char **argv)
 {
+	char buf[100];
+
 	shell_print(shell, "argc = %d", argc);
 	for (size_t cnt = 0; cnt < argc; cnt++) {
-		shell_print(shell, "  argv[%d] = %s", cnt, argv[cnt]);
+		snprintk(buf, sizeof(buf), "%s", argv[cnt]);
+		shell_print(shell, "  argv[%d] = %s", cnt, buf);
 	}
 
 	return 0;
