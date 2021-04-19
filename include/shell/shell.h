@@ -72,6 +72,7 @@ extern "C" {
  */
 
 struct z_getopt_state;
+struct z_option;
 struct shell_static_entry;
 
 /**
@@ -978,7 +979,6 @@ void shell_help(const struct shell *shell);
 /* @brief Command's help has been printed */
 #define SHELL_CMD_HELP_PRINTED	(1)
 
-#if defined CONFIG_SHELL_GETOPT
 /**
  * @brief Parses the command-line arguments.
  *
@@ -987,7 +987,7 @@ void shell_help(const struct shell *shell);
  * @param[in] shell	Pointer to the shell instance.
  * @param[in] argc	Arguments count.
  * @param[in] argv	Arguments.
- * @param[in] ostr	String containing the legitimate option characters.
+ * @param[in] options	String containing the legitimate option characters.
  *
  * @return		If an option was successfully found, function returns
  *			the option character.
@@ -1000,7 +1000,60 @@ void shell_help(const struct shell *shell);
  * @return -1		If all options have been parsed.
  */
 int shell_getopt(const struct shell *shell, int argc, char *const argv[],
-		 const char *ostr);
+		 const char *options);
+/**
+ * @brief Parses the command-line arguments.
+ *
+ * The shell_getopt_long() function works like @ref shell_getopt() except
+ * it also accepts long options, started with two dashes.
+ *
+ * @note This function is based on FreeBSD implementation but it does not 
+ * support environment variable: POSIXLY_CORRECT.
+ *
+ * @param[in] shell	   Pointer to the shell instance.
+ * @param[in] argc	   Arguments count.
+ * @param[in] argv	   Arguments.
+ * @param[in] options	   String containing the legitimate option characters.
+ * @param[in] long_options Pointer to the first element of an array of
+ * 			   @ref struct option.
+ * @param[in] long_idx	   If long_idx is not NULL, it points to a variable
+ * 			   which is set to the index of the long option relative
+ * 			   to @ref long_options.
+ *
+ * @return		If an option was successfully found, function returns
+ *			the option character.
+ */
+int shell_getopt_long(const struct shell *shell, int argc, char *const argv[],
+		      const char *options, const struct z_option *long_options,
+		      int *long_idx);
+
+/**
+ * @brief Parses the command-line arguments.
+ *
+ * The shell_getopt_long_only() function works like @ref shell_getopt_long(),
+ * but '-' as well as "--" can indicate a long option. If an option that starts
+ * with '-' (not "--") doesn't match a long option, but does match a short
+ * option, it is parsed as a short option instead.
+ *
+ * @note This function is based on FreeBSD implementation but it does not 
+ * support environment variable: POSIXLY_CORRECT.
+ *
+ * @param[in] shell	   Pointer to the shell instance.
+ * @param[in] argc	   Arguments count.
+ * @param[in] argv	   Arguments.
+ * @param[in] options	   String containing the legitimate option characters.
+ * @param[in] long_options Pointer to the first element of an array of
+ * 			   @ref struct option.
+ * @param[in] long_idx	   If long_idx is not NULL, it points to a variable
+ * 			   which is set to the index of the long option relative
+ * 			   to @ref long_options.
+ *
+ * @return		If an option was successfully found, function returns
+ *			the option character.
+ */
+int shell_getopt_long_only(const struct shell *shell, int argc,
+			   char *const argv[], const char *options,
+			   const struct z_option *long_options, int *long_idx);
 
 /**
  * @brief Returns shell_getopt state.
@@ -1010,7 +1063,6 @@ int shell_getopt(const struct shell *shell, int argc, char *const argv[],
  * @return		Pointer to struct getopt_state.
  */
 struct z_getopt_state *shell_getopt_state_get(const struct shell *shell);
-#endif /* CONFIG_SHELL_GETOPT */
 
 /** @brief Execute command.
  *
