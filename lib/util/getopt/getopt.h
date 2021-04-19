@@ -13,7 +13,7 @@ extern "C" {
 
 #include <zephyr.h>
 
-struct getopt_state {
+struct z_getopt_state {
 	int opterr;	/* if error message should be printed */
 	int optind;	/* index into parent argv vector */
 	int optopt;	/* character checked for validity */
@@ -24,14 +24,14 @@ struct getopt_state {
 };
 
 /* Function intializes getopt_state structure */
-void getopt_init(struct getopt_state *state);
+void z_getopt_init(struct z_getopt_state *state);
 
 /*
  * getopt --
  *	Parse argc/argv argument vector.
  */
-int getopt(struct getopt_state *const state, int nargc,
-	   char *const nargv[], const char *ostr);
+int z_getopt(struct z_getopt_state *const state, int nargc,
+	     char *const nargv[], const char *ostr);
 
 
 #ifdef __cplusplus

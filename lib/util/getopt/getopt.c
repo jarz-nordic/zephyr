@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(getopt);
 #define	BADARG	((int)':')
 #define	EMSG	""
 
-void getopt_init(struct getopt_state *state)
+void z_getopt_init(struct z_getopt_state *state)
 {
 	state->opterr = 1;
 	state->optind = 1;
@@ -55,8 +55,8 @@ void getopt_init(struct getopt_state *state)
  *	Parse argc/argv argument vector.
  */
 int
-getopt(state, nargc, nargv, ostr)
-	struct getopt_state *state;
+z_getopt(state, nargc, nargv, ostr)
+	struct z_getopt_state *state;
 	int nargc;
 	char *const nargv[];
 	const char *ostr;
