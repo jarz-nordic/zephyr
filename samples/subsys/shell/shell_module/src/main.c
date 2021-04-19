@@ -92,7 +92,7 @@ static int cmd_demo_ping(const struct shell *shell, size_t argc, char **argv)
 #if defined CONFIG_SHELL_GETOPT
 static int cmd_demo_getopt(const struct shell *shell, size_t argc, char **argv)
 {
-	struct getopt_state *state;
+	struct z_getopt_state *state;
 	char *cvalue = NULL;
 	int aflag = 0;
 	int bflag = 0;

@@ -7,7 +7,7 @@
 #ifndef SHELL_GETOPT_H__
 #define SHELL_GETOPT_H__
 
-#include <getopt.h>
+#include <z_getopt.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +18,7 @@ extern "C" {
  *
  * @param[in] shell	Pointer to the shell instance.
  */
-void z_shell_getopt_init(struct getopt_state *state);
+void z_shell_getopt_init(struct z_getopt_state *state);
 
 #ifdef __cplusplus
 }

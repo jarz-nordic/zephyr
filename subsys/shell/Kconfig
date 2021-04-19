@@ -118,7 +118,7 @@ config SHELL_VT100_COLORS
 
 config SHELL_GETOPT
 	bool "Enable getopt support"
-	select GETOPT
+	select Z_GETOPT
 	help
 	  Enables getopt support in the shell.
 

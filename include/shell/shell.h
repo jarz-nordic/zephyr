@@ -71,7 +71,7 @@ extern "C" {
  * @{
  */
 
-struct getopt_state;
+struct z_getopt_state;
 struct shell_static_entry;
 
 /**
@@ -665,7 +665,7 @@ struct shell_ctx {
 
 #if defined CONFIG_SHELL_GETOPT
 	/*!< getopt context for a shell backend. */
-	struct getopt_state getopt_state;
+	struct z_getopt_state getopt_state;
 #endif
 
 	uint16_t cmd_buff_len; /*!< Command length.*/
@@ -991,7 +991,7 @@ void shell_help(const struct shell *shell);
  *
  * @return		If an option was successfully found, function returns
  *			the option character.
- * @return		If options have been detected that is not in @p ostr
+ * @return		If options have been detected that is not in @p option
  *			function will return '?'.
  *			If function encounters an option with a missing
  *			argument, then the return value depends on the first
@@ -1009,7 +1009,7 @@ int shell_getopt(const struct shell *shell, int argc, char *const argv[],
  *
  * @return		Pointer to struct getopt_state.
  */
-struct getopt_state *shell_getopt_state_get(const struct shell *shell);
+struct z_getopt_state *shell_getopt_state_get(const struct shell *shell);
 #endif /* CONFIG_SHELL_GETOPT */
 
 /** @brief Execute command.

@@ -4,11 +4,11 @@
 #
 
 zephyr_include_directories_ifdef(
-  CONFIG_GETOPT
+  CONFIG_Z_GETOPT
   .
 )
 
 zephyr_sources_ifdef(
-  CONFIG_GETOPT
-  getopt.c
+  CONFIG_Z_GETOPT
+  z_getopt.c
 )
