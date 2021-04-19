@@ -30,7 +30,7 @@ interaction is required. This module is a Unix-like shell with these features:
 * Built-in handler to display help for the commands.
 * Support for wildcards: ``*`` and ``?``.
 * Support for meta keys.
-* Support for getopt.
+* Support for getopt and getopt_long.
 * Kconfig configuration to optimize memory usage.
 
 .. note::
@@ -486,9 +486,9 @@ Getopt Feature
 
 Some shell users apart from subcommands might need to use options as well.
 the arguments string, looking for supported options. Typically, this task
-is accomplished by the ``getopt`` function.
+is accomplished by the ``getopt`` familly functions.
 
-For this purpose shell supports the getopt library available
+For this purpose shell supports the getopt and getopt_long libraries available
 in the FreeBSD project. I was modified so that it can be used
 by all instances of the shell at the same time, hence its call requires
 one more parameter.
