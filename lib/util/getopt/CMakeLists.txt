@@ -12,3 +12,8 @@ zephyr_sources_ifdef(
   CONFIG_Z_GETOPT
   z_getopt.c
 )
+
+zephyr_sources_ifdef(
+  CONFIG_Z_GETOPT_LONG
+  z_getopt_long.c
+)

@@ -7,3 +7,12 @@ config Z_GETOPT
 	  This option enables the getopt library. This library is intended
 	  for use with shell. It implements the same functionality as getopt
 	  but is multi-instance.
+
+config Z_GETOPT_LONG
+	bool "GetOpt Long Support"
+	depends on Z_GETOPT
+	help
+	  This option adds support of the getopt_long and getopt_long_only
+	  functions. This library is intended for use with shell.
+	  It implements the same functionality as getopt_long but is
+	  multi-instance.
