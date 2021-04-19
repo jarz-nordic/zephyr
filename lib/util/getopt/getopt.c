@@ -48,6 +48,11 @@ void z_getopt_init(struct z_getopt_state *state)
 	state->optarg = NULL;
 
 	state->place = ""; /* EMSG */
+
+#if CONFIG_GETOPT_LONG
+	state->nonopt_start = -1; /* first non option argument (for permute) */
+	state->nonopt_end = -1; /* first option after non options (for permute) */
+#endif
 }
 
 /*

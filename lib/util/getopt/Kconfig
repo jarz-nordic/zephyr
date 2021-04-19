@@ -5,3 +5,10 @@ config GETOPT
 	bool "GetOpt Support"
 	help
 	  This option enables the getopt library
+
+config GETOPT_LONG
+	bool "GetOpt Long Support"
+	depends on GETOPT
+	help
+	  This option adds support of the getopt_long and getopt_long_only
+	  functions
