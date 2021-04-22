@@ -28,15 +28,11 @@ struct z_getopt_state {
 #endif
 };
 
-/* Function intializes getopt_state structure */
-void z_getopt_init(struct z_getopt_state *state);
-
-/*
- * getopt --
- *	Parse argc/argv argument vector.
- */
-int z_getopt(struct z_getopt_state *const state, int nargc,
-	     char *const nargv[], const char *ostr);
+extern int opterr;	/* if error message should be printed */
+extern int optind;	/* index into parent argv vector */
+extern int optopt;	/* character checked for validity */
+extern int optreset;	/* reset getopt */
+extern char *optarg;	/* argument associated with option */
 
 #define no_argument        0
 #define required_argument  1
@@ -55,6 +51,61 @@ struct z_option {
 	/* if flag not NULL, value to set *flag to; else return value */
 	int val;
 };
+
+#if CONFIG_GETOPT_LONG_SINGLE
+/* This is the struct name that is supported by getopt natively. */
+struct option {
+	/* name of long option */
+	const char *name;
+	/*
+	 * one of no_argument, required_argument, and optional_argument:
+	 * whether option takes an argument
+	 */
+	int has_arg;
+	/* if not NULL, set *flag to val when option found */
+	int *flag;
+	/* if flag not NULL, value to set *flag to; else return value */
+	int val;
+};
+
+/*
+ * getopt --
+ *	Parse argc/argv argument vector.
+ *	This function should not be used with shell when more than one backend
+ *	is used.
+ */
+int getopt(int nargc, char *const nargv[], const char *ostr);
+
+/*
+ * getopt_long --
+ *	Parse argc/argv argument vector.
+ *	This function should not be used with shell when more than one backend
+ *	is used.
+ */
+int getopt_long(int nargc, char *const *nargv, const char *options,
+		const struct option *long_options, int *idx);
+
+/*
+ * getopt_long_only --
+ *	Parse argc/argv argument vector.
+ *	This function should not be used with shell when more than one backend
+ *	is used.
+ */
+int getopt_long_only(int nargc, char *const *nargv, const char *options,
+		     const struct option *long_options, int *idx);
+
+#endif /* CONFIG_GETOPT_LONG_SINGLE */
+
+/* Function intializes getopt_state structure */
+void z_getopt_init(struct z_getopt_state *state);
+
+/*
+ * z_getopt --
+ *	Parse argc/argv argument vector.
+ */
+int z_getopt(struct z_getopt_state *const state, int nargc,
+	     char *const nargv[], const char *ostr);
+
 
 /*
  * z_getopt_long --

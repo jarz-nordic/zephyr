@@ -39,6 +39,99 @@ LOG_MODULE_REGISTER(getopt);
 #define	BADARG	((int)':')
 #define	EMSG	""
 
+
+#if CONFIG_GETOPT_SINGLE
+int opterr = 1;	/* if error message should be printed */
+int optind = 1;	/* index into parent argv vector */
+int optopt;	/* character checked for validity */
+int optreset;	/* reset getopt */
+char *optarg;	/* argument associated with option */
+
+static char *m_place = EMSG;
+#if CONFIG_GETOPT_LONG_SINGLE
+static int m_nonopt_start;
+static int m_nonopt_end;
+#endif /* CONFIG_GETOPT_LONG_SINGLE */
+
+static void state_store(struct z_getopt_state *state)
+{
+	state->opterr = opterr;
+	state->optind = optind;
+	state->optopt = optopt;
+	state->optreset = optreset;
+	state->optarg = optarg;
+	state->place = m_place;
+
+#if CONFIG_GETOPT_LONG
+	state->nonopt_start = m_nonopt_start;
+	state->nonopt_end = m_nonopt_end;
+#endif
+}
+
+static void state_restore(struct z_getopt_state *state)
+{
+	opterr = state->opterr;
+	optind = state->optind;
+	optopt = state->optopt;
+	optreset = state->optreset;
+	optarg = state->optarg;
+	m_place = state->place;
+
+#if CONFIG_GETOPT_LONG
+	m_nonopt_start = state->nonopt_start;
+	m_nonopt_end = state->nonopt_end;
+#endif
+}
+
+int getopt(int nargc, char *const nargv[], const char *ostr)
+{
+	struct z_getopt_state state;
+	int ret;
+
+	state_store(&state);
+	ret = z_getopt(&state, nargc, nargv, ostr);
+	state_restore(&state);
+
+	return ret;
+}
+#endif /* CONFIG_GETOPT_SINGLE */
+
+#if CONFIG_GETOPT_LONG_SINGLE
+int getopt_long(int nargc, char *const *nargv, const char *options,
+		const struct option *long_options, int *idx)
+{
+	const struct z_option *z_long_options;
+	struct z_getopt_state state;
+	int ret;
+
+	z_long_options = (const struct z_option *)long_options;
+
+	state_store(&state);
+	ret = z_getopt_long(&state, nargc, nargv, options, z_long_options,
+			    idx);
+	state_restore(&state);
+
+	return ret;
+}
+
+int getopt_long_only(int nargc, char *const *nargv, const char *options,
+		     const struct option *long_options, int *idx)
+{
+	const struct z_option *z_long_options;
+	struct z_getopt_state state;
+	int ret;
+
+	z_long_options = (const struct z_option *)long_options;
+
+	state_store(&state);
+	ret = z_getopt_long_only(&state, nargc, nargv, options, z_long_options,
+				 idx);
+	state_restore(&state);
+
+	return ret;
+}
+#endif /* CONFIG_GETOPT_LONG_SINGLE */
+
 void z_getopt_init(struct z_getopt_state *state)
 {
 	state->opterr = 1;

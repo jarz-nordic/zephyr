@@ -568,7 +568,8 @@ start:
  */
 int
 z_getopt_long(struct z_getopt_state *state, int nargc, char *const *nargv,
-	      const char *options, const struct z_option *long_options, int *idx)
+	      const char *options, const struct z_option *long_options,
+	      int *idx)
 {
 
 	return getopt_internal(state, nargc, nargv, options, long_options, idx,

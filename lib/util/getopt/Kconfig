@@ -1,14 +1,41 @@
 # Copyright (c) 2021 Nordic Semiconductor
 # SPDX-License-Identifier: Apache-2.0
 
-config GETOPT
-	bool "GetOpt Support"
+
+menuconfig GETOPT
+	bool "Geopt library support"
 	help
-	  This option enables the getopt library
+	  This option adds support of the multi-instance getopt.
+	  Different threads or shell backends can use their own instance
+	  of getopt to not interfere with each other. This option enables
+	  the following function: z_getopt.
 
 config GETOPT_LONG
-	bool "GetOpt Long Support"
+	bool "Getopt long multi-instance"
 	depends on GETOPT
 	help
-	  This option adds support of the getopt_long and getopt_long_only
-	  functions
+	  This option adds support of the multi-instance getopt long.
+	  Different threads or shell backends can use their own instance
+	  of getopt to not interfere with each other. This option enables
+	  the following functions: z_getopt_long, z_getopt_long_only.
+
+config GETOPT_SINGLE
+	bool "Getopt single instance"
+	depends on GETOPT
+	help
+	  This is a simple implementation of the getopt library based on
+	  FreeBSD that is used similarly to other operating systems.
+	  It provides the function: getopt.
+	  This functions should not be used by the shell as there is a risk
+	  that different shell instances will write getopt state.
+
+config GETOPT_LONG_SINGLE
+	bool "Getopt long single instance"
+	depends on GETOPT_SINGLE
+	select GETOPT_LONG
+	help
+	  This is a simple implementation of the getopt_long library based on
+	  FreeBSD that is used similarly to other operating systems.
+	  It provides the functions: getopt_long and getopt_long_only.
+	  These functions should not be used by the shell as there is a risk
+	  that different shell instances will write getopt state.
