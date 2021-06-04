@@ -1,5 +1,4 @@
 /****************************************************************************
- * SPDX-License-Identifier: Apache-2.0
  * include/nuttx/lib/getopt.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -38,7 +37,7 @@ struct getopt_s
 {
   /* Part of the implementation of the public getopt() interface */
 
-  char     *go_optarg;       /* Optional argument following option */
+  char      *go_optarg;      /* Optional argument following option */
   int       go_opterr;       /* Print error message */
   int       go_optind;       /* Index into argv */
   int       go_optopt;       /* unrecognized option character */
