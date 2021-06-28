@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "unistd.h"
+#include "getopt_unistd.h"
 
 /****************************************************************************
  * Prive Functions

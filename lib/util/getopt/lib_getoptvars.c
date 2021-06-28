@@ -1,5 +1,8 @@
 /****************************************************************************
- * include/nuttx/lib/getopt.h
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * libs/libc/unistd/lib_getoptvars.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,56 +21,71 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_LIB_GETOPT_H
-#define __INCLUDE_NUTTX_LIB_GETOPT_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <stdbool.h>
+#include <zephyr.h>
+#include "getopt_unistd.h"
+#include <subsys/shell.h>
 
 /****************************************************************************
- * Public Types
+ * Private Data
  ****************************************************************************/
 
-/* This structure encapsulates all variables associated with getopt(). */
+/* Data is naturally process-specific in the KERNEL build so no special
+ * access to process-specific global data is needed.
+ */
 
-struct getopt_s
+static struct getopt_s g_getopt_vars =
 {
-  /* Part of the implementation of the public getopt() interface */
-
-  char      *go_optarg;      /* Optional argument following option */
-  int       go_opterr;       /* Print error message */
-  int       go_optind;       /* Index into argv */
-  int       go_optopt;       /* unrecognized option character */
-
-  /* Internal getopt() state */
-
-  char      *go_optptr;      /* Current parsing location */
-  bool      go_binitialized; /* true:  getopt() has been initialized */
+	NULL,
+	0,
+	1,
+	'?',
+	NULL,
+	false
 };
 
 /****************************************************************************
- * Public Data
+ * Public Functions
  ****************************************************************************/
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
 
 /****************************************************************************
- * Public Function Prototypes
+ * Name: getoptvars
+ *
+ * Description:
+ *   Returns a pointer to to the thread-specific getopt() data.
+ *
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
-}
-#endif
+struct getopt_s *getoptvars(void)
+{
 
-#endif /* __INCLUDE_NUTTX_LIB_GETOPT_H */
+	if (!IS_ENABLED(CONFIG_SHELL_GETOPT)) {
+		k_tid_t tid = k_current_get();
+
+		Z_STRUCT_SECTION_FOREACH(shell, sh) {
+			if (tid == sh->ctx->tid) {
+				return &sh->ctx->getopt_vars;
+			}
+		}
+	}
+
+	/* If not a shell thread return a common pointer */
+	return &g_getopt_vars;
+}
+
+void z_getoptvars_init(struct getopt_s *getopt_vars)
+{
+	if (getopt_vars == NULL) {
+		return;
+	}
+
+	getopt_vars->go_optarg = NULL;
+	getopt_vars->go_opterr = 0;
+	getopt_vars->go_optind = 1;
+	getopt_vars->go_optopt = '?';
+	getopt_vars->go_optptr = NULL;
+	getopt_vars->go_binitialized = false;
+}

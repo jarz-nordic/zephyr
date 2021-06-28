@@ -1,4 +1,7 @@
 /****************************************************************************
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * libs/libc/unistd/unistd.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -26,22 +29,15 @@
  ****************************************************************************/
 
 #include <stdbool.h>
-#include <getopt.h>
-
 #include "getopt.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
 
 /****************************************************************************
  * Preprocessor Definitions
@@ -84,6 +80,17 @@ enum getopt_mode_e
 
 struct getopt_s *getoptvars(void);
 
+
+/****************************************************************************
+ * Name: getoptvars_init
+ *
+ * Description:
+ *	Initializes getopt_s structure with default values.
+ *
+ ****************************************************************************/
+
+void getoptvars_init(struct getopt_s *getopt_vars);
+
 /****************************************************************************
  * Name: getopt_common
  *
@@ -99,8 +106,7 @@ int getopt_common(int argc, char * const argv[],
                   int *longindex,
                   enum getopt_mode_e mode);
 
-#undef EXTERN
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 

@@ -1,4 +1,7 @@
 /****************************************************************************
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * libs/libc/unistd/lib_getopt.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -22,7 +25,7 @@
  * Included Files
  ****************************************************************************/
 
-#include "unistd.h"
+#include "getopt_unistd.h"
 
 /****************************************************************************
  * Public Functions

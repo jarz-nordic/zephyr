@@ -7,7 +7,7 @@
 #ifndef SHELL_GETOPT_H__
 #define SHELL_GETOPT_H__
 
-#include <getopt.h>
+#include <getopt_unitstd.h>
 
 #ifdef __cplusplus
 extern "C" {

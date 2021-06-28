@@ -17,7 +17,7 @@
 #include <sys/util.h>
 
 #if defined CONFIG_SHELL_GETOPT
-#include <shell/shell_getopt.h>
+#include <lib/util/getopt/unistd.h>
 #endif
 
 #ifdef __cplusplus
@@ -71,7 +71,6 @@ extern "C" {
  * @{
  */
 
-struct z_getopt_state;
 struct z_option;
 struct shell_static_entry;
 
@@ -666,7 +665,7 @@ struct shell_ctx {
 
 #if defined CONFIG_SHELL_GETOPT
 	/*!< getopt context for a shell backend. */
-	struct z_getopt_state getopt_state;
+	struct getopt_s getopt_vars;
 #endif
 
 	uint16_t cmd_buff_len; /*!< Command length.*/

@@ -1,5 +1,7 @@
 /****************************************************************************
+ *
  * SPDX-License-Identifier: Apache-2.0
+ *
  * include/nuttx/lib/getopt.h
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -28,6 +30,12 @@
 
 #include <stdbool.h>
 
+#include "getopt_unitstd.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/
@@ -53,21 +61,11 @@ struct getopt_s
  * Public Data
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
-
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 

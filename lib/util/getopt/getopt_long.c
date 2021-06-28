@@ -1,4 +1,7 @@
 /****************************************************************************
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * libs/libc/unistd/lib_getopt_long.c
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -22,9 +25,7 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
-
-#include "unistd.h"
+#include "getopt_unistd.h"
 
 /****************************************************************************
  * Public Functions

@@ -130,13 +130,6 @@ config SHELL_GETOPT
 	help
 	  Enables getopt support in the shell.
 
-config SHELL_GETOPT_LONG
-	bool "Enable getopt_long support"
-	depends on SHELL_GETOPT
-	select GETOPT_LONG
-	help
-	  Enables getopt_long support in the shell.
-
 config SHELL_METAKEYS
 	bool "Enable metakeys"
 	default y if !SHELL_MINIMAL
