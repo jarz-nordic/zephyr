@@ -21,17 +21,9 @@
  *
  ****************************************************************************/
 
-/****************************************************************************
- * Included Files
- ****************************************************************************/
-
 #include "getopt_unistd.h"
 
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
+/*
  * Name: getopt
  *
  * Description:
@@ -79,9 +71,9 @@
  *   character in optstring: if it is ':', then ':' is returned; otherwise
  *   '?' is returned.
  *
- ****************************************************************************/
+ */
 
 int getopt(int argc, char * const argv[], const char *optstring)
 {
-  return getopt_common(argc, argv, optstring, NULL, NULL, GETOPT_MODE);
+	return getopt_common(argc, argv, optstring, NULL, NULL, GETOPT_MODE);
 }

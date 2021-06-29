@@ -21,17 +21,9 @@
  *
  ****************************************************************************/
 
-/****************************************************************************
- * Included Files
- ****************************************************************************/
-
 #include <zephyr.h>
+#include <shell/shell.h>
 #include "getopt_unistd.h"
-#include <subsys/shell.h>
-
-/****************************************************************************
- * Private Data
- ****************************************************************************/
 
 /* Data is naturally process-specific in the KERNEL build so no special
  * access to process-specific global data is needed.
@@ -47,17 +39,13 @@ static struct getopt_s g_getopt_vars =
 	false
 };
 
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
+/*
  * Name: getoptvars
  *
  * Description:
  *   Returns a pointer to to the thread-specific getopt() data.
  *
- ****************************************************************************/
+ */
 
 struct getopt_s *getoptvars(void)
 {
@@ -76,7 +64,7 @@ struct getopt_s *getoptvars(void)
 	return &g_getopt_vars;
 }
 
-void z_getoptvars_init(struct getopt_s *getopt_vars)
+void getoptvars_init(struct getopt_s *getopt_vars)
 {
 	if (getopt_vars == NULL) {
 		return;
@@ -88,4 +76,9 @@ void z_getoptvars_init(struct getopt_s *getopt_vars)
 	getopt_vars->go_optopt = '?';
 	getopt_vars->go_optptr = NULL;
 	getopt_vars->go_binitialized = false;
+}
+
+struct getopt_s *getopt_state_get(void)
+{
+	return getoptvars();
 }

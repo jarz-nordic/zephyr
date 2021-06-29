@@ -21,17 +21,9 @@
  *
  ****************************************************************************/
 
-/****************************************************************************
- * Included Files
- ****************************************************************************/
-
 #include "getopt_unistd.h"
 
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
+/*
  * Name: getopt_long
  *
  * Description:
@@ -41,13 +33,13 @@
  *   string (""), not NULL.) Long option names may be abbreviated if the
  *   abbreviation is unique or is an exact match for some defined option
  *
- ****************************************************************************/
+ */
 
 int getopt_long(int argc, char * const argv[],
-                const char *optstring,
-                const struct option *longopts,
-                int *longindex)
+		const char *optstring,
+		const struct option *longopts,
+		int *longindex)
 {
-  return getopt_common(argc, argv, optstring, longopts, longindex,
-                       GETOPT_LONG_MODE);
+	return getopt_common(argc, argv, optstring, longopts, longindex,
+			     GETOPT_LONG_MODE);
 }

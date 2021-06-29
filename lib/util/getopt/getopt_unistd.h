@@ -28,20 +28,15 @@
  * Included Files
  ****************************************************************************/
 
+#include <stddef.h>
 #include <stdbool.h>
 #include "getopt.h"
+
+struct option;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/****************************************************************************
- * Public Data
- ****************************************************************************/
-
-/****************************************************************************
- * Preprocessor Definitions
- ****************************************************************************/
 
 /* Mode bit definitions */
 
@@ -51,60 +46,52 @@ extern "C" {
 #define GETOPT_HAVE_LONG(m)     (((m) & GETOPT_LONG_BIT) != 0)
 #define GETOPT_HAVE_LONGONLY(m) (((m) & GETOPT_LONGONLY_BIT) != 0)
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
 
 /* The mode determines which of getopt(), getopt_long(), and
  * getopt_long_only() that is being emulated by getopt_common().
  */
 
-enum getopt_mode_e
-{
-  GETOPT_MODE           = 0,
-  GETOPT_LONG_MODE      = GETOPT_LONG_BIT,
-  GETOPT_LONG_ONLY_MODE = (GETOPT_LONG_BIT | GETOPT_LONGONLY_BIT)
+enum getopt_mode_e {
+	GETOPT_MODE		= 0,
+	GETOPT_LONG_MODE	= GETOPT_LONG_BIT,
+	GETOPT_LONG_ONLY_MODE	= (GETOPT_LONG_BIT | GETOPT_LONGONLY_BIT)
 };
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
-
-/****************************************************************************
+/*
  * Name: getoptvars
  *
  * Description:
  *   Returns a pointer to to the thread-specific getopt() data.
  *
- ****************************************************************************/
+ */
 
 struct getopt_s *getoptvars(void);
 
 
-/****************************************************************************
+/*
  * Name: getoptvars_init
  *
  * Description:
  *	Initializes getopt_s structure with default values.
  *
- ****************************************************************************/
+ */
 
 void getoptvars_init(struct getopt_s *getopt_vars);
 
-/****************************************************************************
+/*
  * Name: getopt_common
  *
  * Description:
  *   getopt_common() is the common, internal implementation of getopt(),
  *   getopt_long(), and getopt_long_only().
  *
- ****************************************************************************/
+ */
 
 int getopt_common(int argc, char * const argv[],
-                  const char *optstring,
-                  const struct option *longopts,
-                  int *longindex,
-                  enum getopt_mode_e mode);
+		  const char *optstring,
+		  const struct option *longopts,
+		  int *longindex,
+		  enum getopt_mode_e mode);
 
 #ifdef __cplusplus
 }

@@ -17,7 +17,7 @@
 #include <sys/util.h>
 
 #if defined CONFIG_SHELL_GETOPT
-#include <lib/util/getopt/unistd.h>
+#include <shell/shell_getopt.h>
 #endif
 
 #ifdef __cplusplus
@@ -1059,9 +1059,9 @@ int shell_getopt_long_only(const struct shell *shell, int argc,
  *
  * @param[in] shell	Pointer to the shell instance.
  *
- * @return		Pointer to @p struct z_getopt_state.
+ * @return		Pointer to @p struct getopt_s.
  */
-struct z_getopt_state *shell_getopt_state_get(const struct shell *shell);
+struct getopt_s *shell_getopt_state_get(const struct shell *shell);
 
 /** @brief Execute command.
  *

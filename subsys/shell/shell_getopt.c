@@ -10,5 +10,10 @@
 
 void z_shell_getopt_init(struct getopt_s *vars)
 {
-	z_getoptvars_init(state);
+	getoptvars_init(vars);
+}
+
+struct getopt_s *shell_getopt_state_get(const struct shell *shell)
+{
+	return &shell->ctx->getopt_vars;
 }
