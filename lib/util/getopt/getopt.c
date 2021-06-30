@@ -75,5 +75,12 @@
 
 int getopt(int argc, char * const argv[], const char *optstring)
 {
-	return getopt_common(argc, argv, optstring, NULL, NULL, GETOPT_MODE);
+	int ret;
+
+	ret = getopt_common(argc, argv, optstring, NULL, NULL, GETOPT_MODE);
+
+	/* set global getopt variables - this is not thread safe */
+	global_getopt_vars_set(getoptvars());
+
+	return ret;
 }

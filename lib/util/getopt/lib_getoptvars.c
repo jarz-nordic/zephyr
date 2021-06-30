@@ -24,6 +24,7 @@
 #include <zephyr.h>
 #include <shell/shell.h>
 #include "getopt_unistd.h"
+#include <stdio.h>
 
 /* Data is naturally process-specific in the KERNEL build so no special
  * access to process-specific global data is needed.
@@ -48,25 +49,34 @@ static struct getopt_s g_getopt_vars =
  */
 
 struct getopt_s *getoptvars(void)
-{
-
-	if (!IS_ENABLED(CONFIG_SHELL_GETOPT)) {
+{/*
+	if (IS_ENABLED(CONFIG_SHELL_GETOPT)) {
 		k_tid_t tid = k_current_get();
-
 		Z_STRUCT_SECTION_FOREACH(shell, sh) {
 			if (tid == sh->ctx->tid) {
 				return &sh->ctx->getopt_vars;
 			}
 		}
 	}
-
+*/
 	/* If not a shell thread return a common pointer */
 	return &g_getopt_vars;
 }
 
 void getoptvars_init(struct getopt_s *getopt_vars)
 {
+	optarg = NULL;
+	opterr = 0;
+	optind = 1;
+	optopt = '?';
+
 	if (getopt_vars == NULL) {
+		g_getopt_vars.go_optarg = NULL;
+		g_getopt_vars.go_opterr = 0;
+		g_getopt_vars.go_optind = 1;
+		g_getopt_vars.go_optopt = '?';
+		g_getopt_vars.go_optptr = NULL;
+		g_getopt_vars.go_binitialized = false;
 		return;
 	}
 
@@ -82,3 +92,19 @@ struct getopt_s *getopt_state_get(void)
 {
 	return getoptvars();
 }
+
+void global_getopt_vars_set(struct getopt_s *go)
+{
+	if (go) {
+		optarg = go->go_optarg;
+		opterr = go->go_opterr;
+		optind = go->go_optind;
+		optopt = go->go_optopt;
+	} else {
+		optarg = g_getopt_vars.go_optarg;
+		opterr = g_getopt_vars.go_opterr;
+		optind = g_getopt_vars.go_optind;
+		optopt = g_getopt_vars.go_optopt;
+	}
+}
+

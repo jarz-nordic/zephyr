@@ -34,16 +34,6 @@ int opterr = 0;
 int optind = 1;
 int optopt = '?';
 
-static void global_getopt_vars_set(struct getopt_s *go)
-{
-	if (go) {
-		optarg = go->go_optarg;
-		opterr = go->go_opterr;
-		optind = go->go_optind;
-		optopt = go->go_optopt;
-	}
-}
-
 /*
  * Name: compare_long_option
  *
@@ -308,7 +298,6 @@ int getopt_common(int argc, char * const argv[],
 		  enum getopt_mode_e mode)
 {
 	int ret;
-
 	/* Get thread-specific getopt() variables */
 
 	struct getopt_s *go = getoptvars();
@@ -355,7 +344,6 @@ int getopt_common(int argc, char * const argv[],
 			if (!go->go_optptr) {
 				/* There are no more arguments, we are finished */
 				go->go_binitialized = false;
-				global_getopt_vars_set(go);
 				return ERROR;
 			}
 
@@ -366,7 +354,6 @@ int getopt_common(int argc, char * const argv[],
 			if (*go->go_optptr != '-') {
 				/* The argument does not start with '-', we are finished */
 				go->go_binitialized = false;
-				global_getopt_vars_set(go);
 				return ERROR;
 			}
 			/* Skip over the '-' */
@@ -377,14 +364,12 @@ int getopt_common(int argc, char * const argv[],
 		if (!*go->go_optptr) {
 			/* We'll fix up optptr the next time we are called */
 			go->go_optopt = '\0';
-			global_getopt_vars_set(go);
 			return '?';
 		}
 		/* Handle the case of "-:" */
 		if (*go->go_optptr == ':') {
 			go->go_optopt = ':';
 			go->go_optptr++;
-			global_getopt_vars_set(go);
 			return '?';
 		}
 
@@ -428,7 +413,6 @@ int getopt_common(int argc, char * const argv[],
 					go->go_optptr = NULL;
 				}
 
-				global_getopt_vars_set(go);
 				return ret;
 			} else if (GETOPT_HAVE_LONGONLY(mode)) {
 				/* The -option form is only valid in getop_long_only() mode and
@@ -443,7 +427,6 @@ int getopt_common(int argc, char * const argv[],
 				ret = getopt_long_option(go, argv, longopts, longindex);
 				if (ret != '?') {
 					/* Return success or ERROR */
-					global_getopt_vars_set(go);
 					return ret;
 				} else if (*(go->go_optptr + 1) != '\0') {
 					/* Check for single character option.
@@ -459,7 +442,6 @@ int getopt_common(int argc, char * const argv[],
 					/* Skip over the unrecognized long option. */
 					go->go_optind++;
 					go->go_optptr = NULL;
-					global_getopt_vars_set(go);
 					return ret;
 				}
 			}
@@ -481,7 +463,6 @@ int getopt_common(int argc, char * const argv[],
 				go->go_optopt = *go->go_optptr;
 				go->go_optptr = NULL;
 				go->go_optind++;
-				global_getopt_vars_set(go);
 				return '?';
 			} else {
 				/* Restore the initial, uninitialized state, and return
@@ -489,7 +470,6 @@ int getopt_common(int argc, char * const argv[],
 				 */
 
 				go->go_binitialized = false;
-				global_getopt_vars_set(go);
 				return ERROR;
 			}
 		}
@@ -510,7 +490,6 @@ int getopt_common(int argc, char * const argv[],
 
 			go->go_optopt = *go->go_optptr;
 			go->go_optptr++;
-			global_getopt_vars_set(go);
 			return '?';
 		}
 
@@ -521,7 +500,6 @@ int getopt_common(int argc, char * const argv[],
 		if (optchar[1] != ':') {
 			/* No, no arguments. Just return the character that we found */
 			go->go_optptr++;
-			global_getopt_vars_set(go);
 			return *optchar;
 		}
 
@@ -535,7 +513,6 @@ int getopt_common(int argc, char * const argv[],
 			go->go_optarg = &go->go_optptr[1];
 			go->go_optind++;
 			go->go_optptr = NULL;
-			global_getopt_vars_set(go);
 			return *optchar;
 		}
 
@@ -545,7 +522,6 @@ int getopt_common(int argc, char * const argv[],
 			go->go_optarg = argv[go->go_optind + 1];
 			go->go_optind += 2;
 			go->go_optptr = NULL;
-			global_getopt_vars_set(go);
 			return *optchar;
 		}
 
@@ -554,7 +530,6 @@ int getopt_common(int argc, char * const argv[],
 		go->go_optarg = NULL;
 		go->go_optopt = *optchar;
 		go->go_optind++;
-		global_getopt_vars_set(go);
 
 		/* Two colons means that the argument is optional. */
 		return (optchar[2] == ':') ? *optchar : noarg_ret;
@@ -566,6 +541,5 @@ int getopt_common(int argc, char * const argv[],
 
 	/* Update global variables with currently processed getopt state */
 
-	global_getopt_vars_set(go);
 	return ERROR;
 }

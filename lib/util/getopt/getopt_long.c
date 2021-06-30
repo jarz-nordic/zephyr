@@ -40,6 +40,30 @@ int getopt_long(int argc, char * const argv[],
 		const struct option *longopts,
 		int *longindex)
 {
-	return getopt_common(argc, argv, optstring, longopts, longindex,
+	int ret;
+	ret =  getopt_common(argc, argv, optstring, longopts, longindex,
 			     GETOPT_LONG_MODE);
+
+	/* set global getopt variables - this is not thread safe */
+	global_getopt_vars_set(getoptvars());
+
+	return ret;
 }
+
+int getopt_long_only(int argc, char * const argv[],
+		     const char *optstring,
+		     const struct option *longopts,
+		     int *longindex)
+{
+	int ret;
+
+	ret =  getopt_common(argc, argv, optstring, longopts, longindex,
+			     GETOPT_LONG_ONLY_MODE);
+
+	/* set global getopt variables - this is not thread safe */
+	global_getopt_vars_set(getoptvars());
+
+	return ret;
+}
+
+

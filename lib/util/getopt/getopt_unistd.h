@@ -93,6 +93,8 @@ int getopt_common(int argc, char * const argv[],
 		  int *longindex,
 		  enum getopt_mode_e mode);
 
+void global_getopt_vars_set(struct getopt_s *go);
+
 #ifdef __cplusplus
 }
 #endif

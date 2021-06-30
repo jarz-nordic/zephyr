@@ -47,6 +47,10 @@ struct getopt_s {
   bool	go_binitialized;	/* true:  getopt() has been initialized */
 };
 
+#define no_argument        0
+#define required_argument  1
+#define optional_argument  2
+
 struct option {
 	const char *name;
 	int has_arg;
