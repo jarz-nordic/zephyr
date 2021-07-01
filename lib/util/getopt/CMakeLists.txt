@@ -11,4 +11,7 @@ zephyr_include_directories_ifdef(
 zephyr_sources_ifdef(
   CONFIG_GETOPT
   getopt.c
+  getopt_long.c
+  lib_getopt_common.c
+  lib_getoptvars.c
 )

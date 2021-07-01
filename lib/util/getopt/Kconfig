@@ -1,7 +1,20 @@
 # Copyright (c) 2021 Nordic Semiconductor
 # SPDX-License-Identifier: Apache-2.0
 
+
 config GETOPT
-	bool "GetOpt Support"
+	bool "Geopt library support"
 	help
-	  This option enables the getopt library
+	  This option adds support of the multi-instance getopt.
+	  Different shell backends use their own instance of getopt state
+	  structure.
+	  There are two options if one wants to use getopt functions from
+	  outside the shell thread. If getopt is called from only one thread
+	  it can be done straight forward. The getopt functions will use
+	  a single getopt state structure created in the lib_getoptvars.c
+	  file.
+	  However, if getopt is expected to be called from multiple threads,
+	  you must modify the struct getopt_s *getoptvars(void) function
+	  in the lib_getoptvars.c file so that it returns a separate getopt
+	  state structure for each thread.
+

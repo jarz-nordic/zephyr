@@ -92,14 +92,13 @@ static int cmd_demo_ping(const struct shell *shell, size_t argc, char **argv)
 #if defined CONFIG_SHELL_GETOPT
 static int cmd_demo_getopt(const struct shell *shell, size_t argc, char **argv)
 {
-	struct getopt_state *state;
 	char *cvalue = NULL;
 	int aflag = 0;
 	int bflag = 0;
 	int c;
 
-	while ((c = shell_getopt(shell, argc, argv, "abhc:")) != -1) {
-		state = shell_getopt_state_get(shell);
+	while ((c = getopt(argc, argv, "abhc:")) != -1) {
+		struct getopt_s *state = getopt_state_get();
 		switch (c) {
 		case 'a':
 			aflag = 1;
@@ -108,7 +107,7 @@ static int cmd_demo_getopt(const struct shell *shell, size_t argc, char **argv)
 			bflag = 1;
 			break;
 		case 'c':
-			cvalue = state->optarg;
+			cvalue = state->go_optarg;
 			break;
 		case 'h':
 			/* When getopt is active shell is not parsing
@@ -118,18 +117,18 @@ static int cmd_demo_getopt(const struct shell *shell, size_t argc, char **argv)
 			shell_help(shell);
 			return SHELL_CMD_HELP_PRINTED;
 		case '?':
-			if (state->optopt == 'c') {
+			if (state->go_optopt == 'c') {
 				shell_print(shell,
 					"Option -%c requires an argument.",
-					state->optopt);
-			} else if (isprint(state->optopt)) {
+					state->go_optopt);
+			} else if (isprint(state->go_optopt)) {
 				shell_print(shell,
 					"Unknown option `-%c'.",
-					state->optopt);
+					state->go_optopt);
 			} else {
 				shell_print(shell,
 					"Unknown option character `\\x%x'.",
-					state->optopt);
+					state->go_optopt);
 			}
 			return 1;
 		default:
